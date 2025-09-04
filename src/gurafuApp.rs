@@ -1,16 +1,20 @@
-use iced::widget::{button, column, text};
+use iced::widget::{button, column, pane_grid, text};
 
 
-
-#[derive(Debug, Default)]
 pub struct GurafuApplication {
-    // state would go here
+    panes: pane_grid::State<Pane>,
 }
 
+#[derive(Debug)]
+enum Pane {
+    Canvas,
+    File,
+    Player,
+}
 
 #[derive(Debug, Clone)]
 enum GurafuMessage {
-    
+    PaneResized(pane_grid::ResizeEvent),
 }
 
 pub fn run() -> iced::Result {
@@ -19,16 +23,41 @@ pub fn run() -> iced::Result {
     .run()
 }
 
+impl Default for GurafuApplication {
+    fn default() -> Self {
+        GurafuApplication::new()
+    }
+}
+
 impl GurafuApplication {
-    fn update(&mut self, message: GurafuMessage)  {}
+    fn new() -> Self {
+        let (panes, _) = pane_grid::State::new(Pane::Canvas);
+
+        GurafuApplication {
+            panes,
+        }
+    }
+
+
+    fn update(&mut self, message: GurafuMessage)  {
+        match message {
+            GurafuMessage::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
+                self.panes.resize(split, ratio);
+            }
+
+        }
+    }
     fn view(&self) -> iced::Element<GurafuMessage> {
-        column![
-            text("Hello, world!"),
-            text("Hello, world!"),
-            text("Hello, world!"),
-            text("Hello, world!"),
-            text("Hello, world!"),
-        ]
+        pane_grid(&self.panes, |pane, state, is_maximized| {
+            pane_grid::Content::new({
+                match state {
+                    Pane::Canvas => text("this will be a canvas"),
+                    Pane::File => text("this will be a file managment"),
+                    Pane::Player => text("this will be a player"),
+                }
+            })
+        })
+        .on_resize(10, GurafuMessage::PaneResized)
         .into()
     }
 
@@ -43,4 +72,6 @@ impl GurafuApplication {
 // 3. player thingies
 
 // a canvas with:
-// graph
+// 1. inifinite grid
+// 2. dragging
+// 3. graphs
