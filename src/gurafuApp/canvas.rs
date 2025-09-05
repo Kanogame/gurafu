@@ -1,5 +1,7 @@
 use iced::{mouse, widget::canvas, Color, Rectangle, Renderer, Theme};
 
+mod grid;
+
 #[derive(Debug, Clone)]
 pub struct CanvasState {
     // some state
