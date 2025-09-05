@@ -3,10 +3,12 @@ use std::fs::File;
 use iced::{alignment::Horizontal, widget::{button, column, pane_grid, text}};
 
 mod file;
+mod canvas;
 
 pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
     file: file::FileState,
+    canvas: canvas::CanvasState,
 }
 
 #[derive(Debug)]
@@ -20,6 +22,7 @@ enum Pane {
 enum GurafuMessage {
     PaneResized(pane_grid::ResizeEvent),
     File(file::FileMessage),
+    Canvas(canvas::CanvasMessage),
 }
 
 pub fn run() -> iced::Result {
@@ -55,6 +58,7 @@ impl GurafuApplication {
         GurafuApplication {
             panes,
             file: file::FileState::new(),
+            canvas: canvas::CanvasState::new(),
         }
     }
 
@@ -75,7 +79,7 @@ impl GurafuApplication {
                     file::FileState::view(&self.file).map(GurafuMessage::File)
                 }),
                 Pane::Canvas => pane_grid::Content::new({
-                    text("this will be a canvas")
+                    canvas::CanvasState::view(&self.canvas).map(GurafuMessage::Canvas)
                 }),
                 Pane::Player => pane_grid::Content::new({
                     text("this will be a player")
