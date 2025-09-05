@@ -1,8 +1,12 @@
-use iced::widget::{button, column, pane_grid, text};
+use std::fs::File;
 
+use iced::{alignment::Horizontal, widget::{button, column, pane_grid, text}};
+
+mod file;
 
 pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
+    file: file::FileState,
 }
 
 #[derive(Debug)]
@@ -15,6 +19,7 @@ enum Pane {
 #[derive(Debug, Clone)]
 enum GurafuMessage {
     PaneResized(pane_grid::ResizeEvent),
+    File(file::FileMessage),
 }
 
 pub fn run() -> iced::Result {
@@ -31,10 +36,25 @@ impl Default for GurafuApplication {
 
 impl GurafuApplication {
     fn new() -> Self {
-        let (panes, _) = pane_grid::State::new(Pane::Canvas);
+        let panes = pane_grid::State::with_configuration(
+            pane_grid::Configuration::Split { 
+                axis: pane_grid::Axis::Vertical, 
+                ratio: 0.2, 
+                a: Box::new(
+                    pane_grid::Configuration::Split { 
+                        axis: pane_grid::Axis::Horizontal, 
+                        ratio: 0.8, 
+                        a: Box::new(pane_grid::Configuration::Pane(Pane::File)), 
+                        b: Box::new(pane_grid::Configuration::Pane(Pane::Player)), 
+                    }
+                ), 
+                b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)) 
+            }
+        );
 
         GurafuApplication {
             panes,
+            file: file::FileState::new(),
         }
     }
 
@@ -44,18 +64,23 @@ impl GurafuApplication {
             GurafuMessage::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
             }
+            GurafuMessage::File(some) => {}
 
         }
     }
     fn view(&self) -> iced::Element<GurafuMessage> {
         pane_grid(&self.panes, |pane, state, is_maximized| {
-            pane_grid::Content::new({
-                match state {
-                    Pane::Canvas => text("this will be a canvas"),
-                    Pane::File => text("this will be a file managment"),
-                    Pane::Player => text("this will be a player"),
-                }
-            })
+            match state {
+                Pane::File => pane_grid::Content::new({
+                    file::FileState::view(&self.file).map(GurafuMessage::File)
+                }),
+                Pane::Canvas => pane_grid::Content::new({
+                    text("this will be a canvas")
+                }),
+                Pane::Player => pane_grid::Content::new({
+                    text("this will be a player")
+                }),
+            }
         })
         .on_resize(10, GurafuMessage::PaneResized)
         .into()
