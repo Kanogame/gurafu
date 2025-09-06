@@ -1,10 +1,13 @@
-use iced::{mouse, widget::canvas, Color, Rectangle, Renderer, Theme};
+use iced::{mouse, widget::canvas, Color, Point, Rectangle, Renderer, Theme};
+
+use crate::gurafuApp::canvas::grid::Camera;
 
 mod grid;
 
 #[derive(Debug, Clone)]
 pub struct CanvasState {
-    // some state
+    camera: Camera,
+    circle: Circle,
 }
 
 
@@ -13,12 +16,13 @@ pub enum CanvasMessage {
     // messages
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Circle {
     radius: f32,
+    pos: Point<f32>,
 }
 
-impl<canvasMessage> canvas::Program<canvasMessage> for Circle {
+impl<CanvasMessage> canvas::Program<CanvasMessage> for CanvasState {
     type State = ();
 
 
@@ -32,9 +36,14 @@ impl<canvasMessage> canvas::Program<canvasMessage> for Circle {
 
          // We prepare a new `Frame`
         let mut frame = canvas::Frame::new(renderer, bounds.size());
+        
+        //self.camera.setSize(bounds.size());
+        
 
         // We create a `Path` representing a simple circle
-        let circle = canvas::Path::circle(frame.center(), self.radius);
+        let worldpos= self.camera.WorldToScreen(self.circle.pos);
+        println!("{}, {:?}", worldpos, bounds);
+        let circle = canvas::Path::circle(worldpos, self.circle.radius);
 
         // And fill it with some color
         frame.fill(&circle, Color::BLACK);
@@ -47,11 +56,14 @@ impl<canvasMessage> canvas::Program<canvasMessage> for Circle {
 
 impl CanvasState {
     pub fn new() -> Self {
-        return CanvasState{};
+        return CanvasState{
+            camera: Camera::new(),
+            circle: Circle { radius: 200_f32, pos: Point { x: 0_f32, y: 0_f32 } }
+        };
     }
 
     pub fn view(&self) -> iced::Element<CanvasMessage> {
-        canvas(Circle { radius: 50.0 }).into()
+        canvas(self).into()
     }
 }
 
