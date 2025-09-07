@@ -1,12 +1,13 @@
 use iced::{
-    Color, Event, Point, Rectangle, Renderer, Theme,
+    Color, Event, Point, Rectangle, Renderer, Theme, Vector,
     alignment::Horizontal::{Left, Right},
-    mouse,
+    mouse::{self, ScrollDelta},
     widget::{canvas, pane_grid::Draggable, text_input::cursor},
 };
 
-use crate::gurafuApp::canvas::grid::Camera;
+use crate::gurafuApp::canvas::camera::Camera;
 
+mod camera;
 mod grid;
 
 #[derive(Debug, Default, Clone)]
@@ -23,6 +24,7 @@ pub enum CanvasMessage {
     DraggingStart(Point),
     DraggingEnd,
     Dragging(Point),
+    Scroll(Vector),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -46,38 +48,54 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             // propagating it higher would be a giant overhead, so we act
             // like a widget here and handle our state internally, exposing only
             // minimal info needed
-            canvas::Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
-                if !state.is_dragging && cursor.position().is_some() {
-                    state.is_dragging = true;
-                    (
-                        canvas::event::Status::Captured,
-                        Some(CanvasMessage::DraggingStart(cursor.position().unwrap())),
-                    )
-                } else {
-                    (canvas::event::Status::Ignored, None)
+            canvas::Event::Mouse(m_ev) => match m_ev {
+                mouse::Event::ButtonPressed(mouse::Button::Left) => {
+                    let pos = cursor.position();
+                    if !state.is_dragging && pos.is_some() {
+                        state.is_dragging = true;
+                        state.drag_start_position = pos.unwrap();
+                        (canvas::event::Status::Captured, None)
+                    } else {
+                        (canvas::event::Status::Ignored, None)
+                    }
                 }
-            }
-            canvas::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
-                if state.is_dragging {
-                    state.is_dragging = false;
-                    (
-                        canvas::event::Status::Captured,
-                        Some(CanvasMessage::DraggingEnd),
-                    )
-                } else {
-                    (canvas::event::Status::Ignored, None)
+                mouse::Event::ButtonReleased(mouse::Button::Left) => {
+                    if state.is_dragging {
+                        state.is_dragging = false;
+
+                        state.camera.applyDragPosition(self.drag_offset);
+                        (canvas::event::Status::Captured, None)
+                    } else {
+                        (canvas::event::Status::Ignored, None)
+                    }
                 }
-            }
-            canvas::Event::Mouse(mouse::Event::CursorMoved { position }) => {
-                if state.is_dragging {
-                    (
-                        canvas::event::Status::Captured,
-                        Some(CanvasMessage::Dragging(position)),
-                    )
-                } else {
-                    (canvas::event::Status::Ignored, None)
+                mouse::Event::CursorMoved { position } => {
+                    if state.is_dragging {
+                        let drag_start = state.drag_start_position;
+                        state.drag_start_position = position;
+                        state.drag_offset = Point {
+                            x: drag_start.x - position.x,
+                            y: drag_start.y - position.y,
+                        };
+
+                        state.camera.applyDragPosition(state.drag_offset);
+                        (canvas::event::Status::Captured, None)
+                    } else {
+                        (canvas::event::Status::Ignored, None)
+                    }
                 }
-            }
+                mouse::Event::WheelScrolled { delta } => {
+                    let deltaVector: Vector = match delta {
+                        ScrollDelta::Lines { x, y } => Vector { x: x, y: y },
+                        ScrollDelta::Pixels { x, y } => Vector { x: x, y: y },
+                    };
+
+                    state.camera.applyScroll(deltaVector.x);
+
+                    return (canvas::event::Status::Captured, None);
+                }
+                _ => (canvas::event::Status::Ignored, None),
+            },
             _ => (canvas::event::Status::Ignored, None),
         }
     }
@@ -86,7 +104,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         &self,
         _state: &Self::State,
         renderer: &Renderer,
-        _theme: &Theme,
+        theme: &Theme,
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry> {
@@ -97,10 +115,10 @@ impl canvas::Program<CanvasMessage> for CanvasState {
 
         // We create a `Path` representing a simple circle
         let worldpos = self.camera.WorldToScreen(self.circle.pos);
-        let circle = canvas::Path::circle(worldpos, self.circle.radius);
+        let circle: canvas::Path = canvas::Path::circle(worldpos, self.circle.radius);
 
         // And fill it with some color
-        frame.fill(&circle, Color::BLACK);
+        frame.fill(&circle, theme.palette().primary);
 
         // Then, we produce the geometry
         vec![frame.into_geometry()]

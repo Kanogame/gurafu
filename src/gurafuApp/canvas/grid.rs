@@ -1,48 +1,48 @@
-use iced::{Point, Rectangle, Size};
+use iced::{
+    Point, Size, Theme,
+    widget::{Canvas, canvas},
+};
 
-#[derive(Debug, Default, Clone)]
-pub struct Camera {
-    // position of camera in grid coordinates
-    pos: Point<f32>,
+use crate::gurafuApp::canvas::camera::Camera;
 
-    // size of camera
-    size: Size<f32>,
-
-    // camera zoom
-    scale: f32,
+pub struct Grid {
+    size: Size,
+    stepSize: f32,
+    // elements??
 }
 
-impl Camera {
-    pub fn new() -> Self {
-        Camera {
-            pos: Point { x: 0_f32, y: 0_f32 },
-            size: Size {
-                width: 800_f32,
-                height: 600_f32,
-            },
-            scale: 1_f32,
+impl Grid {
+    pub fn new(size: Size) -> Self {
+        Grid {
+            size: size,
+            stepSize: 10_f32,
         }
     }
 
-    pub fn setSize(&mut self, size: Size<f32>) {
-        self.size = size;
-    }
+    // generates points visible to Camera, every stepSize, using theme
+    pub fn getGridPoints(&self, camera: Camera) -> Vec<canvas::Path> {
+        // top left corner of camera
+        let cameraTL = camera.pos;
+        let size = camera.size;
 
-    pub fn WorldToScreen(&self, worldCoords: Point<f32>) -> Point<f32> {
-        let inv: f32 = 1_f32 / self.scale;
+        let mut points: Vec<canvas::Path> = vec![];
 
-        Point {
-            x: (worldCoords.x - self.pos.x) * inv,
-            y: (worldCoords.y - self.pos.y) * inv,
+        // clamp TL to size
+        let mut clampedCameraTL = Point {
+            x: cameraTL.x % self.stepSize,
+            y: cameraTL.y % self.stepSize,
+        };
+
+        while clampedCameraTL.x < size.width {
+            while clampedCameraTL.y < size.height {
+                points.push(canvas::Path::circle(clampedCameraTL, 5_f32));
+
+                clampedCameraTL.y += self.stepSize;
+            }
+
+            clampedCameraTL.x += self.stepSize;
         }
-    }
 
-    pub fn applyDragPosition(&mut self, offset: Point) {
-        self.pos.x += offset.x;
-        self.pos.y += offset.y;
+        points
     }
-
-    //fn ScreenToWorld(&self, screen: Point<f64>) -> Point<f64> {
-    //    Point { x: screen.x + self.x * self.scale, y: screen.y + self.y * self.scale }
-    //}
 }

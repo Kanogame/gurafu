@@ -71,29 +71,10 @@ impl GurafuApplication {
             }
             GurafuMessage::File(some) => {}
             GurafuMessage::Canvas(ev) => match ev {
-                CanvasMessage::DraggingStart(pos) => {
-                    self.canvas.drag_start_position = pos;
-                }
-                CanvasMessage::DraggingEnd => {
-                    self.canvas.is_dragging = false;
-
-                    self.canvas
-                        .camera
-                        .applyDragPosition(self.canvas.drag_offset);
-                }
-                CanvasMessage::Dragging(pos) => {
-                    let drag_start = self.canvas.drag_start_position;
-                    self.canvas.drag_start_position = pos;
-
-                    self.canvas.drag_offset = Point {
-                        x: drag_start.x - pos.x,
-                        y: drag_start.y - pos.y,
-                    };
-
-                    self.canvas
-                        .camera
-                        .applyDragPosition(self.canvas.drag_offset);
-                }
+                CanvasMessage::DraggingStart(pos) => {}
+                CanvasMessage::DraggingEnd => {}
+                CanvasMessage::Dragging(pos) => {}
+                CanvasMessage::Scroll(vec) => {}
                 _ => {}
             },
         }
