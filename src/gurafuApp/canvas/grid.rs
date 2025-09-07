@@ -1,6 +1,6 @@
 use iced::{Point, Rectangle, Size};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Camera {
     // position of camera in grid coordinates
     pos: Point<f32>,
@@ -14,9 +14,12 @@ pub struct Camera {
 
 impl Camera {
     pub fn new() -> Self {
-        Camera{
+        Camera {
             pos: Point { x: 0_f32, y: 0_f32 },
-            size: Size { width: 800_f32, height: 600_f32 },
+            size: Size {
+                width: 800_f32,
+                height: 600_f32,
+            },
             scale: 1_f32,
         }
     }
@@ -25,11 +28,18 @@ impl Camera {
         self.size = size;
     }
 
-    
     pub fn WorldToScreen(&self, worldCoords: Point<f32>) -> Point<f32> {
         let inv: f32 = 1_f32 / self.scale;
 
-        Point { x: (worldCoords.x - self.pos.x) * inv, y: (worldCoords.y - self.pos.x) * inv }
+        Point {
+            x: (worldCoords.x - self.pos.x) * inv,
+            y: (worldCoords.y - self.pos.y) * inv,
+        }
+    }
+
+    pub fn applyDragPosition(&mut self, offset: Point) {
+        self.pos.x += offset.x;
+        self.pos.y += offset.y;
     }
 
     //fn ScreenToWorld(&self, screen: Point<f64>) -> Point<f64> {
