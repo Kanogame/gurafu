@@ -1,7 +1,7 @@
-use iced::widget::{button, text};
+use iced;
 
-mod gurafuApp;
+mod gurafu_app;
 
 fn main() -> iced::Result {
-    gurafuApp::run()
+    gurafu_app::run()
 }

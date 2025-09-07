@@ -1,12 +1,4 @@
-use std::fs::File;
-
-use iced::{
-    Point,
-    alignment::Horizontal,
-    widget::{button, column, pane_grid, text},
-};
-
-use crate::gurafuApp::canvas::CanvasMessage;
+use iced::widget::{pane_grid, text};
 
 mod canvas;
 mod file;
@@ -64,31 +56,25 @@ impl GurafuApplication {
         }
     }
 
-    fn update(&mut self, message: GurafuMessage) {
+    fn update(state: &mut GurafuApplication, message: GurafuMessage) {
         match message {
             GurafuMessage::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
-                self.panes.resize(split, ratio);
+                state.panes.resize(split, ratio);
             }
-            GurafuMessage::File(some) => {}
-            GurafuMessage::Canvas(ev) => match ev {
-                CanvasMessage::DraggingStart(pos) => {}
-                CanvasMessage::DraggingEnd => {}
-                CanvasMessage::Dragging(pos) => {}
-                CanvasMessage::Scroll(vec) => {}
-                _ => {}
-            },
+            GurafuMessage::File(_) => {}
+            GurafuMessage::Canvas(_) => {}
         }
     }
 
-    fn view(&self) -> iced::Element<GurafuMessage> {
-        pane_grid(&self.panes, |pane, state, is_maximized| match state {
+    fn view(state: &GurafuApplication) -> iced::Element<'_, GurafuMessage> {
+        pane_grid(&state.panes, |_, pane_state, _| match pane_state {
             Pane::File => pane_grid::Content::new({
-                file::FileState::view(&self.file).map(GurafuMessage::File)
+                file::FileState::view(&state.file).map(GurafuMessage::File)
             }),
             Pane::Canvas => pane_grid::Content::new({
-                canvas::CanvasState::view(&self.canvas).map(GurafuMessage::Canvas)
+                canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
             }),
-            Pane::Player => pane_grid::Content::new({ text("this will be a player") }),
+            Pane::Player => pane_grid::Content::new(text("this will be a player")),
         })
         .on_resize(10, GurafuMessage::PaneResized)
         .into()

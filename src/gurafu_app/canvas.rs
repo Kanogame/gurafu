@@ -1,31 +1,26 @@
 use iced::{
-    Color, Event, Point, Rectangle, Renderer, Theme, Vector,
-    alignment::Horizontal::{Left, Right},
+    Point, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
-    widget::{canvas, pane_grid::Draggable, text_input::cursor},
+    widget::canvas,
 };
 
-use crate::gurafuApp::canvas::camera::Camera;
+use crate::gurafu_app::canvas::{camera::Camera, grid::Grid};
 
 mod camera;
 mod grid;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct CanvasState {
-    pub is_dragging: bool,
-    pub drag_start_position: Point,
-    pub drag_offset: Point,
-    pub camera: Camera,
+    is_dragging: bool,
+    drag_start_position: Point,
+    drag_offset: Point,
+    camera: Camera,
+    grid: Grid,
     circle: Circle,
 }
 
 #[derive(Debug, Clone)]
-pub enum CanvasMessage {
-    DraggingStart(Point),
-    DraggingEnd,
-    Dragging(Point),
-    Scroll(Vector),
-}
+pub enum CanvasMessage {}
 
 #[derive(Debug, Default, Clone)]
 struct Circle {
@@ -63,7 +58,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                     if state.is_dragging {
                         state.is_dragging = false;
 
-                        state.camera.applyDragPosition(self.drag_offset);
+                        state.camera.apply_drag(self.drag_offset);
                         (canvas::event::Status::Captured, None)
                     } else {
                         (canvas::event::Status::Ignored, None)
@@ -78,19 +73,19 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                             y: drag_start.y - position.y,
                         };
 
-                        state.camera.applyDragPosition(state.drag_offset);
+                        state.camera.apply_drag(state.drag_offset);
                         (canvas::event::Status::Captured, None)
                     } else {
                         (canvas::event::Status::Ignored, None)
                     }
                 }
                 mouse::Event::WheelScrolled { delta } => {
-                    let deltaVector: Vector = match delta {
+                    let delta_vec: Vector = match delta {
                         ScrollDelta::Lines { x, y } => Vector { x: x, y: y },
                         ScrollDelta::Pixels { x, y } => Vector { x: x, y: y },
                     };
 
-                    state.camera.applyScroll(deltaVector.x);
+                    state.camera.apply_scroll(delta_vec.x);
 
                     return (canvas::event::Status::Captured, None);
                 }
@@ -102,7 +97,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
 
     fn draw(
         &self,
-        _state: &Self::State,
+        state: &Self::State,
         renderer: &Renderer,
         theme: &Theme,
         bounds: Rectangle,
@@ -113,12 +108,18 @@ impl canvas::Program<CanvasMessage> for CanvasState {
 
         //self.camera.setSize(bounds.size());
 
+        let points = self.grid.get_grid_points(&state.camera, bounds.size());
+
         // We create a `Path` representing a simple circle
-        let worldpos = self.camera.WorldToScreen(self.circle.pos);
-        let circle: canvas::Path = canvas::Path::circle(worldpos, self.circle.radius);
+        let worldpos = state.camera.world_to_screen(state.circle.pos);
+        let circle: canvas::Path = canvas::Path::circle(worldpos, state.circle.radius);
 
         // And fill it with some color
         frame.fill(&circle, theme.palette().primary);
+
+        for point in points {
+            frame.fill(&point, theme.palette().success);
+        }
 
         // Then, we produce the geometry
         vec![frame.into_geometry()]
@@ -138,10 +139,17 @@ impl canvas::Program<CanvasMessage> for CanvasState {
     }
 }
 
+impl Default for CanvasState {
+    fn default() -> Self {
+        CanvasState::new()
+    }
+}
+
 impl CanvasState {
     pub fn new() -> Self {
         return CanvasState {
             camera: Camera::new(),
+            grid: Grid::new(),
             is_dragging: false,
             drag_start_position: Point { x: 0_f32, y: 0_f32 },
             drag_offset: Point { x: 0_f32, y: 0_f32 },
@@ -152,7 +160,7 @@ impl CanvasState {
         };
     }
 
-    pub fn view(&self) -> iced::Element<CanvasMessage> {
-        canvas(self).into()
+    pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
+        canvas(state).into()
     }
 }
