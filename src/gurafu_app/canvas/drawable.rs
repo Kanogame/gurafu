@@ -1,0 +1,21 @@
+use iced::{
+    Point,
+    widget::canvas::{self, Path},
+};
+
+use crate::gurafu_app::canvas::camera::Camera;
+
+pub trait Drawable {
+    fn into_path(&self, camera: &Camera) -> Path;
+}
+
+pub struct Circle {
+    pub radius: f32,
+    pub pos: Point,
+}
+
+impl Drawable for Circle {
+    fn into_path(&self, camera: &Camera) -> Path {
+        Path::circle(camera.world_to_screen(self.pos), self.radius)
+    }
+}

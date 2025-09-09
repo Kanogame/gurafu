@@ -23,6 +23,10 @@ impl ToolbarOptions {
         ToolbarOptions::Connection,
     ];
 
+    pub fn new() -> Self {
+        ToolbarOptions::Hand
+    }
+
     fn name(&self) -> String {
         match self {
             ToolbarOptions::Hand => "Hand",
@@ -40,7 +44,7 @@ impl ToolbarOptions {
 impl ToolbarState {
     pub fn new() -> Self {
         ToolbarState {
-            state: ToolbarOptions::Hand,
+            state: ToolbarOptions::new(),
         }
     }
 

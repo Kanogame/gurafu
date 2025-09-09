@@ -76,7 +76,10 @@ impl GurafuApplication {
             GurafuMessage::File(_) => {}
             GurafuMessage::Canvas(_) => {}
             GurafuMessage::Toolbar(message) => match message {
-                ToolbarMessage::ChosenState(new_state) => state.toolbar.state = new_state,
+                ToolbarMessage::ChosenState(new_state) => {
+                    state.toolbar.state = new_state.clone();
+                    state.canvas.toolbar_state = new_state;
+                }
             },
         }
     }

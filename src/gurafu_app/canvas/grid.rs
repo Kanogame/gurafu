@@ -58,4 +58,12 @@ impl Grid {
             y: (world.y / self.step_size).floor() * self.step_size,
         }
     }
+
+    // claps the point to closest point on grid
+    pub fn to_grid(&self, world: Point) -> Point {
+        Point {
+            x: (world.x / self.step_size).round() * self.step_size,
+            y: (world.y / self.step_size).round() * self.step_size,   
+        }
+    }
 }
