@@ -1,29 +1,39 @@
-use iced::widget::{button, row, text, Row};
+use iced::widget::{Row, button, column, text};
 
 pub struct ToolbarState {
-    state: ToolbarOptions
+    pub state: ToolbarOptions,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ToolbarOptions {
     Hand,
     Node,
-    Connection
+    Connection,
 }
 
+#[derive(Debug, Clone)]
 pub enum ToolbarMessage {
     ChosenState(ToolbarOptions),
 }
 
 impl ToolbarOptions {
-    const values: [Self; 3] = [ToolbarOptions::Hand, ToolbarOptions::Node, ToolbarOptions::Connection];
+    const VALUES: [Self; 3] = [
+        ToolbarOptions::Hand,
+        ToolbarOptions::Node,
+        ToolbarOptions::Connection,
+    ];
 
     fn name(&self) -> String {
         match self {
             ToolbarOptions::Hand => "Hand",
             ToolbarOptions::Node => "Node",
-            ToolbarOptions::Connection => "Connection"
-        }.into()
+            ToolbarOptions::Connection => "Connection",
+        }
+        .into()
+    }
+
+    fn to_message(&self) -> ToolbarMessage {
+        ToolbarMessage::ChosenState(self.clone())
     }
 }
 
@@ -34,13 +44,16 @@ impl ToolbarState {
         }
     }
 
-    pub fn view(&self) -> iced::Element<'_, ToolbarOptions> {
-        Row::with_children(ToolbarOptions::values.map(
-            |el| 
-            button(text(el.name()))
-                .on_press(el.clone())
-                .into()
-            )
-        ).into()
+    pub fn update(state: &mut ToolbarState, message: ToolbarMessage) {}
+
+    pub fn view(state: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
+        column![
+            Row::with_children(
+                ToolbarOptions::VALUES
+                    .map(|el| button(text(el.name())).on_press(el.to_message()).into())
+            ),
+            text(state.state.name()),
+        ]
+        .into()
     }
 }

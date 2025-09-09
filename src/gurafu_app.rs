@@ -1,5 +1,7 @@
 use iced::widget::{pane_grid, text};
 
+use crate::gurafu_app::toolbar::ToolbarMessage;
+
 mod canvas;
 mod file;
 mod toolbar;
@@ -8,6 +10,7 @@ pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
     file: file::FileState,
     canvas: canvas::CanvasState,
+    toolbar: toolbar::ToolbarState,
 }
 
 #[derive(Debug)]
@@ -15,6 +18,7 @@ enum Pane {
     Canvas,
     File,
     Player,
+    Toolbar,
 }
 
 #[derive(Debug, Clone)]
@@ -22,6 +26,7 @@ enum GurafuMessage {
     PaneResized(pane_grid::ResizeEvent),
     File(file::FileMessage),
     Canvas(canvas::CanvasMessage),
+    Toolbar(toolbar::ToolbarMessage),
 }
 
 pub fn run() -> iced::Result {
@@ -47,13 +52,19 @@ impl GurafuApplication {
                 a: Box::new(pane_grid::Configuration::Pane(Pane::File)),
                 b: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
             }),
-            b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)),
+            b: Box::new(pane_grid::Configuration::Split {
+                axis: pane_grid::Axis::Horizontal,
+                ratio: 0.05,
+                a: Box::new(pane_grid::Configuration::Pane(Pane::Toolbar)),
+                b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)),
+            }),
         });
 
         GurafuApplication {
             panes,
             file: file::FileState::new(),
             canvas: canvas::CanvasState::new(),
+            toolbar: toolbar::ToolbarState::new(),
         }
     }
 
@@ -64,6 +75,9 @@ impl GurafuApplication {
             }
             GurafuMessage::File(_) => {}
             GurafuMessage::Canvas(_) => {}
+            GurafuMessage::Toolbar(message) => match message {
+                ToolbarMessage::ChosenState(new_state) => state.toolbar.state = new_state,
+            },
         }
     }
 
@@ -76,6 +90,9 @@ impl GurafuApplication {
                 canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
             }),
             Pane::Player => pane_grid::Content::new(text("this will be a player")),
+            Pane::Toolbar => pane_grid::Content::new({
+                toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
+            }),
         })
         .on_resize(10, GurafuMessage::PaneResized)
         .into()
