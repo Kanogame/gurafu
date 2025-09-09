@@ -2,6 +2,7 @@ use iced::widget::{pane_grid, text};
 
 mod canvas;
 mod file;
+mod toolbar;
 
 pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
