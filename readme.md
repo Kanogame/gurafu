@@ -8,3 +8,16 @@ It can:
 4. Create graphs
 5. Generate graphs
 6. Display algorithms step-by-step 
+
+roadmap:
+1. finish connection
+    - make smooth line
+    - add arrow
+    - make arrow appear logical
+2. link node editor to graph
+    - adding node creates a node
+    - adding connection creates connection
+3. add import/export via file
+    - draw from graph type
+4. Implement algo
+5. Add timeline+highliting
