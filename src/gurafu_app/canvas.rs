@@ -1,7 +1,5 @@
 use iced::{
-    Point, Rectangle, Renderer, Theme, Vector,
-    mouse::{self, ScrollDelta},
-    widget::canvas,
+    mouse::{self, ScrollDelta}, widget::{self, canvas::{self, Path}}, Color, Point, Rectangle, Renderer, Size, Theme, Vector
 };
 
 use crate::gurafu_app::{
@@ -18,9 +16,16 @@ mod drawable;
 mod grid;
 
 pub struct CanvasStateInternal {
+    // drag
     is_dragging: bool,
     drag_start_position: Point,
     drag_offset: Point,
+
+    // connection
+    is_connecting: bool,
+    connection_start: Point,
+
+    // state
     camera: Camera,
     grid: Grid,
     toolbar_state: ToolbarOptions,
@@ -70,6 +75,15 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                     }
                     _ => (canvas::event::Status::Ignored, None),
                 },
+                mouse::Event::ButtonPressed(mouse::Button::Middle) => {
+                        if !state.is_dragging && pos.is_some() {
+                            state.is_dragging = true;
+                            state.drag_start_position = pos.unwrap();
+                            (canvas::event::Status::Captured, None)
+                        } else {
+                            (canvas::event::Status::Ignored, None)
+                        }
+                },
                 mouse::Event::ButtonReleased(button) => match button {
                     mouse::Button::Left => match state.toolbar_state {
                         ToolbarOptions::Hand => {
@@ -93,7 +107,21 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                                 (canvas::event::Status::Ignored, None)
                             }
                         }
-                        _ => (canvas::event::Status::Ignored, None),
+                        ToolbarOptions::Connection => {
+                            if pos.is_some() {
+                                if state.is_connecting {
+                                    // some
+                                     (canvas::event::Status::Ignored, None)
+                                } else {
+                                    state.is_connecting = true;
+                                    state.connection_start = state.grid.to_grid(state.camera.screen_to_world( pos.unwrap()));
+
+                                    (canvas::event::Status::Captured, None)
+                                }
+                            } else {
+                                (canvas::event::Status::Ignored, None)
+                            }
+                        }
                     },
                     mouse::Button::Right => match state.toolbar_state {
                         ToolbarOptions::Node => {
@@ -106,6 +134,16 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                             }
                         }
                         _ => (canvas::event::Status::Ignored, None),
+                    },
+                    mouse::Button::Middle => {
+                        if state.is_dragging {
+                                state.is_dragging = false;
+
+                                state.camera.apply_drag(state.drag_offset);
+                                (canvas::event::Status::Captured, None)
+                            } else {
+                                (canvas::event::Status::Ignored, None)
+                            }
                     },
                     _ => (canvas::event::Status::Ignored, None),
                 },
@@ -149,12 +187,10 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         renderer: &Renderer,
         theme: &Theme,
         bounds: Rectangle,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry> {
         // We prepare a new `Frame`
         let mut frame = canvas::Frame::new(renderer, bounds.size());
-
-        //self.camera.setSize(bounds.size());
 
         // fill grid points (alignment helpers)
         for point in state.grid.get_grid_points() {
@@ -173,6 +209,17 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                 ),
                 theme.palette().primary,
             );
+        }
+
+        if state.is_connecting {
+            let point = state.camera.world_to_screen(state.connection_start);
+            let cursor = cursor.position_in(bounds).unwrap();
+
+            let connection = Path::rectangle(point, Size{
+                width: cursor.x - point.x,
+                height: cursor.y - point.y,
+            });
+            frame.fill(&connection, Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
         }
 
         // Then, we produce the geometry
@@ -214,6 +261,8 @@ impl CanvasStateInternal {
             is_dragging: false,
             drag_start_position: Point { x: 0_f32, y: 0_f32 },
             drag_offset: Point { x: 0_f32, y: 0_f32 },
+            is_connecting: false,
+            connection_start: Point { x: 0_f32, y: 0_f32 }
         };
     }
 
@@ -239,6 +288,6 @@ impl CanvasState {
     }
 
     pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
-        canvas(state).into()
+        widget::canvas(state).into()
     }
 }

@@ -88,7 +88,7 @@ impl Grid {
     }
 
     // claps the point to closest point on grid
-    pub fn to_grid(&self, world: Point) -> GridPoint {
+    pub fn to_gridpoint(&self, world: Point) -> GridPoint {
         GridPoint {
             0: Point {
             x: ((world.x / self.step_size).round() * self.step_size)as i32,
@@ -97,14 +97,21 @@ impl Grid {
     }
     }
 
+    pub fn to_grid(&self, world: Point) -> Point {
+        Point {
+            x: (world.x / self.step_size).round() * self.step_size,
+            y: (world.y / self.step_size).round() * self.step_size,   
+        }
+    }
+
     pub fn add_to_grid(&mut self, world: Point, object: Box<dyn Drawable>)  {
-        let grid = self.to_grid(world);
+        let grid = self.to_gridpoint(world);
         if !self.objects.contains_key(&grid) {
             self.objects.insert(grid, object);
         }
     }
 
     pub fn remove_from_grid(&mut self, world: Point) {
-        self.objects.remove(&self.to_grid(world));
+        self.objects.remove(&self.to_gridpoint(world));
     }
 }
