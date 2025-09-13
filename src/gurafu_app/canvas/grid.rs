@@ -7,6 +7,8 @@ use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
 pub struct Grid {
     step_size: f32,
 
+    points: Vec<canvas::Path>,
+
     objects: HashMap<GridPoint, Box<dyn Drawable>>,
 }
 
@@ -29,15 +31,14 @@ impl Eq for GridPoint{}
 
 impl Grid {
     pub fn new() -> Self {
-        Grid { step_size: 100_f32, objects: HashMap::new() }
+        Grid { step_size: 100_f32, objects: HashMap::new(), points: Vec::new() }
     }
 
     pub fn objects(&self) -> Iter<'_, GridPoint, Box<dyn Drawable>> {
         self.objects.iter()
     }
 
-    // generates points visible to Camera, every stepSize
-    pub fn get_grid_points(&self, camera: &Camera, size: Size) -> Vec<canvas::Path> {
+    pub fn update_grid_points(&mut self, camera: &Camera, size: Size) {
         // top left corner of screen in world cords
         let camera_tl = camera.screen_to_world(Point { x: 0_f32, y: 0_f32 });
         // bottom right corner of screen in world cords
@@ -61,7 +62,7 @@ impl Grid {
                         x: start_on_grid.x + x_offset,
                         y: start_on_grid.y + y_offset,
                     }),
-                    5_f32,
+                    5_f32 * (1_f32 / camera.scale),
                 ));
 
                 y_offset += self.step_size;
@@ -71,7 +72,11 @@ impl Grid {
             x_offset += self.step_size;
         }
 
-        points
+        self.points = points;
+    }
+
+    pub fn get_grid_points(&self) -> &Vec<canvas::Path> {
+        &self.points
     }
 
     // clamps the point to top left point on grid
@@ -94,7 +99,7 @@ impl Grid {
 
     pub fn add_to_grid(&mut self, world: Point, object: Box<dyn Drawable>)  {
         let grid = self.to_grid(world);
-        if (!self.objects.contains_key(&grid)) {
+        if !self.objects.contains_key(&grid) {
             self.objects.insert(grid, object);
         }
     }

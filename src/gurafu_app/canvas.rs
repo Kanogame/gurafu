@@ -7,8 +7,8 @@ use iced::{
 use crate::gurafu_app::{
     canvas::{
         camera::Camera,
-        drawable::{Circle, Drawable},
-        grid::{Grid, GridPoint},
+        drawable::{Circle},
+        grid::{Grid},
     },
     toolbar::ToolbarOptions,
 };
@@ -46,6 +46,8 @@ impl canvas::Program<CanvasMessage> for CanvasState {
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         state.toolbar_state = self.toolbar_state.clone();
         let pos = cursor.position_in(bounds);
+        state.grid.update_grid_points(&state.camera, bounds.size());
+
         match event {
             // although implementing state mutation in a canvas defies Elm arch,
             // propagating it higher would be a giant overhead, so we act
@@ -128,8 +130,11 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                         ScrollDelta::Pixels { x, y } => Vector { x: x, y: y },
                     };
 
-                    state.camera.apply_scroll(delta_vec.x);
-
+                    println!("{:?}", delta_vec.y);
+                    
+                    state.camera.apply_scroll(delta_vec.y / 4_f32);
+                    println!("{:?}", state.camera);
+                    
                     return (canvas::event::Status::Captured, None);
                 }
                 _ => (canvas::event::Status::Ignored, None),
@@ -151,11 +156,9 @@ impl canvas::Program<CanvasMessage> for CanvasState {
 
         //self.camera.setSize(bounds.size());
 
-        let points = state.grid.get_grid_points(&state.camera, bounds.size());
-
         // fill grid points (alignment helpers)
-        for point in points {
-            frame.fill(&point, theme.palette().success);
+        for point in state.grid.get_grid_points() {
+            frame.fill(point, theme.palette().success);
         }
 
         // fill objects on canvas

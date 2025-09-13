@@ -15,6 +15,6 @@ pub struct Circle {
 
 impl Drawable for Circle {
     fn into_path(&self, world_position: Point, camera: &Camera) -> Path {
-        Path::circle(camera.world_to_screen(world_position), self.radius)
+        Path::circle(camera.world_to_screen(world_position), self.radius / camera.scale)
     }
 }

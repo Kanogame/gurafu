@@ -6,7 +6,7 @@ pub struct Camera {
     pub pos: Point<f32>,
 
     // camera zoom
-    scale: f32,
+    pub scale: f32,
 }
 
 impl Default for Camera {
@@ -46,8 +46,8 @@ impl Camera {
 
     pub fn screen_to_world(&self, screen_coords: Point) -> Point {
         Point {
-            x: screen_coords.x + self.pos.x * self.scale,
-            y: screen_coords.y + self.pos.y * self.scale,
+            x: (screen_coords.x * self.scale) + self.pos.x,
+            y: (screen_coords.y *self.scale) + self.pos.y,
         }
     }
 }
