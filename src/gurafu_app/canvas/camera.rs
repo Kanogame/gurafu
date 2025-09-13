@@ -44,7 +44,7 @@ impl Camera {
         self.scale += scroll;
     }
 
-    pub fn scree_to_world(&self, screen_coords: Point) -> Point {
+    pub fn screen_to_world(&self, screen_coords: Point) -> Point {
         Point {
             x: screen_coords.x + self.pos.x * self.scale,
             y: screen_coords.y + self.pos.y * self.scale,

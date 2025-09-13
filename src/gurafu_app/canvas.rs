@@ -1,16 +1,16 @@
 use iced::{
     Point, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
-    widget::{canvas, combo_box::State},
+    widget::canvas,
 };
 
 use crate::gurafu_app::{
     canvas::{
         camera::Camera,
         drawable::{Circle, Drawable},
-        grid::Grid,
+        grid::{Grid, GridPoint},
     },
-    toolbar::{self, ToolbarOptions},
+    toolbar::ToolbarOptions,
 };
 
 mod camera;
@@ -23,7 +23,6 @@ pub struct CanvasStateInternal {
     drag_offset: Point,
     camera: Camera,
     grid: Grid,
-    objects: Vec<Box<dyn Drawable>>,
     toolbar_state: ToolbarOptions,
 }
 
@@ -42,19 +41,19 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         &self,
         state: &mut Self::State,
         event: canvas::Event,
-        _bounds: Rectangle,
+        bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         state.toolbar_state = self.toolbar_state.clone();
+        let pos = cursor.position_in(bounds);
         match event {
             // although implementing state mutation in a canvas defies Elm arch,
             // propagating it higher would be a giant overhead, so we act
             // like a widget here and handle our state internally, exposing only
-            // minimal info needed
+            // minimal info needed (currently none)
             canvas::Event::Mouse(m_ev) => match m_ev {
                 mouse::Event::ButtonPressed(mouse::Button::Left) => match state.toolbar_state {
                     ToolbarOptions::Hand => {
-                        let pos = cursor.position();
                         if !state.is_dragging && pos.is_some() {
                             state.is_dragging = true;
                             state.drag_start_position = pos.unwrap();
@@ -69,33 +68,52 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                     }
                     _ => (canvas::event::Status::Ignored, None),
                 },
-                mouse::Event::ButtonReleased(mouse::Button::Left) => match state.toolbar_state {
-                    ToolbarOptions::Hand => {
-                        if state.is_dragging {
+                mouse::Event::ButtonReleased(button) => match button {
+                    mouse::Button::Left => match state.toolbar_state {
+                        ToolbarOptions::Hand => {
+                            if state.is_dragging {
+                                state.is_dragging = false;
+
+                                state.camera.apply_drag(state.drag_offset);
+                                (canvas::event::Status::Captured, None)
+                            } else {
+                                (canvas::event::Status::Ignored, None)
+                            }
+                        }
+                        ToolbarOptions::Node => {
                             state.is_dragging = false;
 
-                            state.camera.apply_drag(state.drag_offset);
-                            (canvas::event::Status::Captured, None)
-                        } else {
-                            (canvas::event::Status::Ignored, None)
+                            if pos.is_some() {
+                                state.create_new_node_on_grid(pos.unwrap());
+
+                                (canvas::event::Status::Captured, None)
+                            } else {
+                                (canvas::event::Status::Ignored, None)
+                            }
                         }
-                    }
-                    ToolbarOptions::Node => {
-                        state.is_dragging = false;
+                        _ => (canvas::event::Status::Ignored, None),
+                    },
+                    mouse::Button::Right => match state.toolbar_state {
+                        ToolbarOptions::Node => {
+                            if pos.is_some() {
+                                state.remove_node_from_grid( pos.unwrap());
 
-                        state.create_new_node_on_grid(cursor.position().unwrap());
-
-                        (canvas::event::Status::Captured, None)
-                    }
+                                (canvas::event::Status::Captured, None)
+                            } else {
+                                (canvas::event::Status::Ignored, None)
+                            }
+                        }
+                        _ => (canvas::event::Status::Ignored, None),
+                    },
                     _ => (canvas::event::Status::Ignored, None),
                 },
-                mouse::Event::CursorMoved { position } => {
-                    if state.is_dragging {
+                mouse::Event::CursorMoved { position: _ } => {
+                    if state.is_dragging && pos.is_some() {
                         let drag_start = state.drag_start_position;
-                        state.drag_start_position = position;
+                        state.drag_start_position = pos.unwrap();
                         state.drag_offset = Point {
-                            x: drag_start.x - position.x,
-                            y: drag_start.y - position.y,
+                            x: drag_start.x - pos.unwrap().x,
+                            y: drag_start.y - pos.unwrap().y,
                         };
 
                         state.camera.apply_drag(state.drag_offset);
@@ -141,8 +159,17 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         }
 
         // fill objects on canvas
-        for obj in state.objects.iter() {
-            frame.fill(&obj.into_path(&state.camera), theme.palette().primary);
+        for (pos, obj) in state.grid.objects() {
+            frame.fill(
+                &obj.into_path(
+                    Point {
+                        x: pos.0.x as f32,
+                        y: pos.0.y as f32,
+                    },
+                    &state.camera,
+                ),
+                theme.palette().primary,
+            );
         }
 
         // Then, we produce the geometry
@@ -155,10 +182,16 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         _bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> mouse::Interaction {
-        if state.is_dragging {
-            mouse::Interaction::Grabbing
-        } else {
-            mouse::Interaction::Grab
+        match state.toolbar_state {
+            ToolbarOptions::Hand => {
+                if state.is_dragging {
+                    mouse::Interaction::Grabbing
+                } else {
+                    mouse::Interaction::Grab
+                }
+            }
+            ToolbarOptions::Node => mouse::Interaction::Pointer,
+            _ => mouse::Interaction::None,
         }
     }
 }
@@ -178,18 +211,20 @@ impl CanvasStateInternal {
             is_dragging: false,
             drag_start_position: Point { x: 0_f32, y: 0_f32 },
             drag_offset: Point { x: 0_f32, y: 0_f32 },
-            objects: vec![],
         };
     }
 
     fn create_new_node_on_grid(&mut self, screen: Point) {
-        let world_grid = self.grid.to_grid(self.camera.scree_to_world(screen));
-        let object = Circle {
-            radius: 30_f32,
-            pos: world_grid,
-        };
+        let object = Circle { radius: 30_f32 };
 
-        self.objects.push(Box::new(object));
+        self.grid
+            .add_to_grid(self.camera.screen_to_world(screen), Box::new(object))
+    }
+
+    fn remove_node_from_grid(&mut self, screen: Point) {
+
+        self.grid
+            .remove_from_grid(self.camera.screen_to_world(screen))
     }
 }
 
