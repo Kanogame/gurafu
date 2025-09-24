@@ -10,10 +10,6 @@ It can:
 6. Display algorithms step-by-step 
 
 roadmap:
-1. finish connection
-    - make smooth line
-    - add arrow
-    - make arrow appear logical
 2. link node editor to graph
     - adding node creates a node
     - adding connection creates connection
