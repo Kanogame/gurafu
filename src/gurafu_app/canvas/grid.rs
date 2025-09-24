@@ -12,6 +12,7 @@ pub struct Grid {
     objects: HashMap<GridPoint, Box<dyn Drawable>>,
 }
 
+#[derive(Clone, Copy)]
 pub struct GridPoint(pub iced::Point<i32>);
 
 impl std::hash::Hash for GridPoint {
@@ -77,6 +78,10 @@ impl Grid {
 
     pub fn get_grid_points(&self) -> &Vec<canvas::Path> {
         &self.points
+    }
+
+    pub fn get_object_at(&self, point: GridPoint) -> Option<&Box<dyn Drawable>> {
+        self.objects.get(&point)
     }
 
     // clamps the point to top left point on grid

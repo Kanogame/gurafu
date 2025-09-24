@@ -110,11 +110,11 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                         ToolbarOptions::Connection => {
                             if pos.is_some() {
                                 if state.is_connecting {
-                                    // some
+                                    state.end_connection(pos.unwrap());
+
                                      (canvas::event::Status::Ignored, None)
                                 } else {
-                                    state.is_connecting = true;
-                                    state.connection_start = state.grid.to_grid(state.camera.screen_to_world( pos.unwrap()));
+                                    state.start_connection(pos.unwrap());
 
                                     (canvas::event::Status::Captured, None)
                                 }
@@ -285,6 +285,34 @@ impl CanvasStateInternal {
 
         self.grid
             .remove_from_grid(self.camera.screen_to_world(screen))
+    }
+
+    fn start_connection(&mut self, screen: Point) {
+        let grid_point = self.grid.to_gridpoint(self.camera.screen_to_world(screen));
+
+        let start_node = self.grid.get_object_at(grid_point);
+
+        match start_node {
+            Some(_) => {
+                self.is_connecting = true;
+                self.connection_start = Point { x: grid_point.0.x as f32, y: grid_point.0.y as f32};
+
+            }
+            None => {}
+        }
+    }
+
+    fn end_connection(&mut self, screen: Point) {
+        let grid_point = self.grid.to_gridpoint(self.camera.screen_to_world(screen));
+
+        let end_node = self.grid.get_object_at(grid_point);
+
+        match end_node {
+            Some(_) => {
+                self.is_connecting = false;
+            }
+            None => {}
+        }
     }
 }
 
