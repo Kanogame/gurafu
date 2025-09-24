@@ -1,5 +1,10 @@
 use iced::{
-    mouse::{self, ScrollDelta}, widget::{self, canvas::{self, Path}}, Color, Point, Rectangle, Renderer, Size, Theme, Vector
+    Color, Point, Rectangle, Renderer, Size, Theme, Vector,
+    mouse::{self, ScrollDelta},
+    widget::{
+        self,
+        canvas::{self, Path},
+    },
 };
 
 use crate::gurafu_app::{
@@ -58,94 +63,20 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             // propagating it higher would be a giant overhead, so we act
             // like a widget here and handle our state internally, exposing only
             // minimal info needed (currently none)
+            //
+            // Btw, this is the "inteded way"
             canvas::Event::Mouse(m_ev) => match m_ev {
-                mouse::Event::ButtonPressed(mouse::Button::Left) => match state.toolbar_state {
-                    ToolbarOptions::Hand => {
-                        if !state.is_dragging && pos.is_some() {
-                            state.is_dragging = true;
-                            state.drag_start_position = pos.unwrap();
-                            (canvas::event::Status::Captured, None)
-                        } else {
-                            (canvas::event::Status::Ignored, None)
-                        }
-                    }
-                    ToolbarOptions::Node => {
-                        state.is_dragging = false;
-                        (canvas::event::Status::Ignored, None)
-                    }
-                    _ => (canvas::event::Status::Ignored, None),
-                },
+                mouse::Event::ButtonPressed(mouse::Button::Left) => {
+                    state.handle_left_mouse_pressed(pos)
+                }
                 mouse::Event::ButtonPressed(mouse::Button::Middle) => {
-                        if !state.is_dragging && pos.is_some() {
-                            state.is_dragging = true;
-                            state.drag_start_position = pos.unwrap();
-                            (canvas::event::Status::Captured, None)
-                        } else {
-                            (canvas::event::Status::Ignored, None)
-                        }
-                },
+                    state.handle_middle_mouse_pressed(pos)
+                }
                 mouse::Event::ButtonReleased(button) => match button {
-                    mouse::Button::Left => match state.toolbar_state {
-                        ToolbarOptions::Hand => {
-                            if state.is_dragging {
-                                state.is_dragging = false;
-
-                                state.camera.apply_drag(state.drag_offset);
-                                (canvas::event::Status::Captured, None)
-                            } else {
-                                (canvas::event::Status::Ignored, None)
-                            }
-                        }
-                        ToolbarOptions::Node => {
-                            state.is_dragging = false;
-
-                            if pos.is_some() {
-                                state.create_new_node_on_grid(pos.unwrap());
-
-                                (canvas::event::Status::Captured, None)
-                            } else {
-                                (canvas::event::Status::Ignored, None)
-                            }
-                        }
-                        ToolbarOptions::Connection => {
-                            if pos.is_some() {
-                                if state.is_connecting {
-                                    state.end_connection(pos.unwrap());
-
-                                     (canvas::event::Status::Ignored, None)
-                                } else {
-                                    state.start_connection(pos.unwrap());
-
-                                    (canvas::event::Status::Captured, None)
-                                }
-                            } else {
-                                (canvas::event::Status::Ignored, None)
-                            }
-                        }
-                    },
-                    mouse::Button::Right => match state.toolbar_state {
-                        ToolbarOptions::Node => {
-                            if pos.is_some() {
-                                state.remove_node_from_grid( pos.unwrap());
-
-                                (canvas::event::Status::Captured, None)
-                            } else {
-                                (canvas::event::Status::Ignored, None)
-                            }
-                        }
-                        _ => (canvas::event::Status::Ignored, None),
-                    },
-                    mouse::Button::Middle => {
-                        if state.is_dragging {
-                                state.is_dragging = false;
-
-                                state.camera.apply_drag(state.drag_offset);
-                                (canvas::event::Status::Captured, None)
-                            } else {
-                                (canvas::event::Status::Ignored, None)
-                            }
-                    },
-                    _ => (canvas::event::Status::Ignored, None),
+                    mouse::Button::Left => state.handle_left_mouse_released(pos),
+                    mouse::Button::Right => state.handle_right_mouse_release(pos),
+                    mouse::Button::Middle => state.handle_middle_mouse_released(),
+                    _ => IGNORED,
                 },
                 mouse::Event::CursorMoved { position: _ } => {
                     if state.is_dragging && pos.is_some() {
@@ -159,7 +90,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                         state.camera.apply_drag(state.drag_offset);
                         (canvas::event::Status::Captured, None)
                     } else {
-                        (canvas::event::Status::Ignored, None)
+                        IGNORED
                     }
                 }
                 mouse::Event::WheelScrolled { delta } => {
@@ -169,15 +100,15 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                     };
 
                     println!("{:?}", delta_vec.y);
-                    
+
                     state.camera.apply_scroll(delta_vec.y / 4_f32);
                     println!("{:?}", state.camera);
-                    
-                    return (canvas::event::Status::Captured, None);
+
+                    return CAPTURED;
                 }
-                _ => (canvas::event::Status::Ignored, None),
+                _ => IGNORED,
             },
-            _ => (canvas::event::Status::Ignored, None),
+            _ => IGNORED,
         }
     }
 
@@ -215,19 +146,29 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             let point = state.camera.world_to_screen(state.connection_start);
             let cursor = cursor.position_in(bounds).unwrap();
 
-            let connection = Arrow{
+            let connection = Arrow {
                 start: point,
                 end: cursor,
                 line_width: 10.0,
                 arrowhead_size: 30.0,
             };
-            
-            
-            Path::rectangle(point, Size{
-                width: cursor.x - point.x,
-                height: cursor.y - point.y,
-            });
-            frame.fill(&connection.into_path(Point { x: 0.0, y: 0.0 },  &state.camera), Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
+
+            Path::rectangle(
+                point,
+                Size {
+                    width: cursor.x - point.x,
+                    height: cursor.y - point.y,
+                },
+            );
+            frame.fill(
+                &connection.into_path(Point { x: 0.0, y: 0.0 }, &state.camera),
+                Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                },
+            );
         }
 
         // Then, we produce the geometry
@@ -260,6 +201,11 @@ impl Default for CanvasStateInternal {
     }
 }
 
+const IGNORED: (canvas::event::Status, Option<CanvasMessage>) =
+    (canvas::event::Status::Ignored, None::<CanvasMessage>);
+const CAPTURED: (canvas::event::Status, Option<CanvasMessage>) =
+    (canvas::event::Status::Captured, None::<CanvasMessage>);
+
 impl CanvasStateInternal {
     fn new() -> Self {
         return CanvasStateInternal {
@@ -270,8 +216,108 @@ impl CanvasStateInternal {
             drag_start_position: Point { x: 0_f32, y: 0_f32 },
             drag_offset: Point { x: 0_f32, y: 0_f32 },
             is_connecting: false,
-            connection_start: Point { x: 0_f32, y: 0_f32 }
+            connection_start: Point { x: 0_f32, y: 0_f32 },
         };
+    }
+
+    // left mouse button
+    fn handle_left_mouse_released(
+        &mut self,
+        cursor: Option<Point>,
+    ) -> (canvas::event::Status, Option<CanvasMessage>) {
+        match self.toolbar_state {
+            ToolbarOptions::Hand => {
+                if self.is_dragging {
+                    self.is_dragging = false;
+
+                    self.camera.apply_drag(self.drag_offset);
+                    return CAPTURED;
+                }
+            }
+            ToolbarOptions::Node => {
+                self.is_dragging = false;
+
+                if cursor.is_some() {
+                    self.create_new_node_on_grid(cursor.unwrap());
+                    return CAPTURED;
+                }
+            }
+            ToolbarOptions::Connection => {
+                if cursor.is_some() {
+                    if self.is_connecting {
+                        self.end_connection(cursor.unwrap());
+                        return CAPTURED;
+                    }
+
+                    self.start_connection(cursor.unwrap());
+                    return CAPTURED;
+                }
+            }
+        }
+        IGNORED
+    }
+
+    fn handle_left_mouse_pressed(
+        &mut self,
+        cursor: Option<Point>,
+    ) -> (canvas::event::Status, Option<CanvasMessage>) {
+        match self.toolbar_state {
+            ToolbarOptions::Hand => {
+                if !self.is_dragging && cursor.is_some() {
+                    self.is_dragging = true;
+                    self.drag_start_position = cursor.unwrap();
+                    return CAPTURED;
+                }
+            }
+            ToolbarOptions::Node => {
+                self.is_dragging = false;
+            }
+            _ => {}
+        };
+        IGNORED
+    }
+
+    // middle mouse button
+    fn handle_middle_mouse_pressed(
+        &mut self,
+        cursor: Option<Point>,
+    ) -> (canvas::event::Status, Option<CanvasMessage>) {
+        if !self.is_dragging && cursor.is_some() {
+            self.is_dragging = true;
+            self.drag_start_position = cursor.unwrap();
+            CAPTURED
+        } else {
+            IGNORED
+        }
+    }
+
+    fn handle_middle_mouse_released(&mut self) -> (canvas::event::Status, Option<CanvasMessage>) {
+        if self.is_dragging {
+            self.is_dragging = false;
+
+            self.camera.apply_drag(self.drag_offset);
+            CAPTURED
+        } else {
+            IGNORED
+        }
+    }
+
+    // right mouse button
+    fn handle_right_mouse_release(
+        &mut self,
+        cursor: Option<Point>,
+    ) -> (canvas::event::Status, Option<CanvasMessage>) {
+        match self.toolbar_state {
+            ToolbarOptions::Node => {
+                if cursor.is_some() {
+                    self.remove_node_from_grid(cursor.unwrap());
+
+                    return CAPTURED;
+                }
+            }
+            _ => {}
+        };
+        IGNORED
     }
 
     fn create_new_node_on_grid(&mut self, screen: Point) {
@@ -282,7 +328,6 @@ impl CanvasStateInternal {
     }
 
     fn remove_node_from_grid(&mut self, screen: Point) {
-
         self.grid
             .remove_from_grid(self.camera.screen_to_world(screen))
     }
@@ -295,8 +340,10 @@ impl CanvasStateInternal {
         match start_node {
             Some(_) => {
                 self.is_connecting = true;
-                self.connection_start = Point { x: grid_point.0.x as f32, y: grid_point.0.y as f32};
-
+                self.connection_start = Point {
+                    x: grid_point.0.x as f32,
+                    y: grid_point.0.y as f32,
+                };
             }
             None => {}
         }
