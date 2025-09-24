@@ -1,4 +1,4 @@
-use iced::widget::{pane_grid, text};
+use iced::{widget::{pane_grid, text}, Settings};
 
 use crate::gurafu_app::toolbar::ToolbarMessage;
 
@@ -32,6 +32,10 @@ enum GurafuMessage {
 pub fn run() -> iced::Result {
     iced::application("Gurafu", GurafuApplication::update, GurafuApplication::view)
         .theme(GurafuApplication::theme)
+        .settings(Settings {
+            antialiasing: true,
+            ..Settings::default()
+        })
         .run()
 }
 

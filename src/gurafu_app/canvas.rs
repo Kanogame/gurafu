@@ -5,8 +5,8 @@ use iced::{
 use crate::gurafu_app::{
     canvas::{
         camera::Camera,
-        drawable::{Circle},
-        grid::{Grid},
+        drawable::{Arrow, Circle, Drawable},
+        grid::Grid,
     },
     toolbar::ToolbarOptions,
 };
@@ -215,11 +215,19 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             let point = state.camera.world_to_screen(state.connection_start);
             let cursor = cursor.position_in(bounds).unwrap();
 
-            let connection = Path::rectangle(point, Size{
+            let connection = Arrow{
+                start: point,
+                end: cursor,
+                line_width: 10.0,
+                arrowhead_size: 30.0,
+            };
+            
+            
+            Path::rectangle(point, Size{
                 width: cursor.x - point.x,
                 height: cursor.y - point.y,
             });
-            frame.fill(&connection, Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
+            frame.fill(&connection.into_path(Point { x: 0.0, y: 0.0 },  &state.camera), Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
         }
 
         // Then, we produce the geometry
