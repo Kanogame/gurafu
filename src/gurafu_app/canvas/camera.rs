@@ -47,7 +47,7 @@ impl Camera {
     pub fn screen_to_world(&self, screen_coords: Point) -> Point {
         Point {
             x: (screen_coords.x * self.scale) + self.pos.x,
-            y: (screen_coords.y *self.scale) + self.pos.y,
+            y: (screen_coords.y * self.scale) + self.pos.y,
         }
     }
 }

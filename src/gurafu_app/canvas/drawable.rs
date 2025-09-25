@@ -39,10 +39,13 @@ pub struct Arrow {
 
 impl Drawable for Arrow {
     fn into_path(&self, camera: &Camera) -> Path {
+        let screen_start = camera.world_to_screen(self.start);
+        let screen_end = camera.world_to_screen(self.end);
+
         // line
         // how this works:
         // we have a vector
-        let v = Vector::new(self.end.x - self.start.x, self.end.y - self.start.y);
+        let v = Vector::new(screen_end.x - screen_start.x, screen_end.y - screen_start.y);
 
         // we get a vector of length 1
         let unit = iced::Vector {
@@ -62,18 +65,18 @@ impl Drawable for Arrow {
             y: offset.y,
         };
 
-        let rectangle_end = self.end - unit * self.arrowhead_size;
+        let rectangle_end = screen_end - unit * self.arrowhead_size;
 
         let points = [
-            self.start + offset_iced,    // top left
-            self.start - offset_iced,    // bottom left
+            screen_start + offset_iced,  // top left
+            screen_start - offset_iced,  // bottom left
             rectangle_end - offset_iced, // bottom right
             rectangle_end + offset_iced, // top right
         ];
 
         // Arrowhead
-        let tip = self.end;
-        let base_center = self.end
+        let tip = screen_end;
+        let base_center = screen_end
             - iced::Vector {
                 x: unit.x,
                 y: unit.y,

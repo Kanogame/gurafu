@@ -144,14 +144,20 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             );
         }
 
-        if state.is_connecting {
-            let point = state.camera.world_to_screen(state.connection_start);
+        // fill edges on canvas
+        for edge in state.graph.raw_edges() {
+            frame.fill(
+                &edge.weight.into_path(&state.camera),
+                theme.palette().primary,
+            );
+        }
 
+        if state.is_connecting {
             match cursor.position_in(bounds) {
                 Some(c) => {
                     let connection = Arrow {
-                        start: point,
-                        end: c,
+                        start: state.connection_start,
+                        end: state.camera.screen_to_world(c),
                         line_width: 10.0,
                         arrowhead_size: 30.0,
                     };
@@ -379,26 +385,32 @@ impl CanvasStateInternal {
         match start_node {
             Some(_) => {
                 self.is_connecting = true;
-                self.connection_start = Point {
-                    x: grid_point.x as f32,
-                    y: grid_point.y as f32,
-                };
+                self.connection_start = grid_point;
             }
             None => {}
         }
     }
 
     fn end_connection(&mut self, screen: Point) {
+        let start_node = self.grid.get_object_in_world(self.connection_start);
         let end_node = self
             .grid
             .get_object_in_world(self.camera.screen_to_world(screen));
 
-        match end_node {
-            Some(_) => {
-                self.is_connecting = false;
-            }
-            None => {}
+        if start_node.is_some() && end_node.is_some() {
+            self.graph.add_edge(
+                start_node.unwrap().clone(),
+                end_node.unwrap().clone(),
+                Arrow {
+                    start: self.grid.to_grid(self.connection_start),
+                    end: self.grid.to_grid(self.camera.screen_to_world(screen)),
+                    line_width: 5.0,
+                    arrowhead_size: 10.0,
+                },
+            );
         }
+
+        self.is_connecting = false;
     }
 }
 
