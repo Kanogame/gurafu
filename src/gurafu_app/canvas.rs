@@ -6,6 +6,7 @@ use iced::{
         canvas::{self, Path},
     },
 };
+use petgraph::Graph;
 
 use crate::gurafu_app::{
     canvas::{
@@ -34,6 +35,7 @@ pub struct CanvasStateInternal {
     camera: Camera,
     grid: Grid,
     toolbar_state: ToolbarOptions,
+    graph: Graph<Circle, Arrow>,
 }
 
 #[derive(Clone)]
@@ -56,6 +58,12 @@ impl canvas::Program<CanvasMessage> for CanvasState {
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         state.toolbar_state = self.toolbar_state.clone();
         let pos = cursor.position_in(bounds);
+
+        if pos.is_none() {
+            state.is_connecting = false;
+            state.is_dragging = false;
+        }
+
         state.grid.update_grid_points(&state.camera, bounds.size());
 
         match event {
@@ -128,47 +136,39 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             frame.fill(point, theme.palette().success);
         }
 
-        // fill objects on canvas
-        for (pos, obj) in state.grid.objects() {
+        // fill nodes on canvas
+        for node in state.graph.raw_nodes() {
             frame.fill(
-                &obj.into_path(
-                    Point {
-                        x: pos.0.x as f32,
-                        y: pos.0.y as f32,
-                    },
-                    &state.camera,
-                ),
+                &node.weight.into_path(&state.camera),
                 theme.palette().primary,
             );
         }
 
         if state.is_connecting {
             let point = state.camera.world_to_screen(state.connection_start);
-            let cursor = cursor.position_in(bounds).unwrap();
 
-            let connection = Arrow {
-                start: point,
-                end: cursor,
-                line_width: 10.0,
-                arrowhead_size: 30.0,
-            };
-
-            Path::rectangle(
-                point,
-                Size {
-                    width: cursor.x - point.x,
-                    height: cursor.y - point.y,
-                },
-            );
-            frame.fill(
-                &connection.into_path(Point { x: 0.0, y: 0.0 }, &state.camera),
-                Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 1.0,
-                },
-            );
+            match cursor.position_in(bounds) {
+                Some(c) => {
+                    let connection = Arrow {
+                        start: point,
+                        end: c,
+                        line_width: 10.0,
+                        arrowhead_size: 30.0,
+                    };
+                    frame.fill(
+                        &connection.into_path(&state.camera),
+                        Color {
+                            r: 1.0,
+                            g: 1.0,
+                            b: 1.0,
+                            a: 1.0,
+                        },
+                    );
+                }
+                None => {
+                    // cursor is outside the canvas, do nothing
+                }
+            }
         }
 
         // Then, we produce the geometry
@@ -217,6 +217,7 @@ impl CanvasStateInternal {
             drag_offset: Point { x: 0_f32, y: 0_f32 },
             is_connecting: false,
             connection_start: Point { x: 0_f32, y: 0_f32 },
+            graph: Graph::new(),
         };
     }
 
@@ -321,28 +322,66 @@ impl CanvasStateInternal {
     }
 
     fn create_new_node_on_grid(&mut self, screen: Point) {
-        let object = Circle { radius: 30_f32 };
+        let grid_pos = self.grid.to_grid(self.camera.screen_to_world(screen));
 
-        self.grid
-            .add_to_grid(self.camera.screen_to_world(screen), Box::new(object))
+        let object = Circle {
+            center: grid_pos,
+            radius: 30_f32,
+        };
+
+        match self.grid.get_object_in_world(grid_pos) {
+            Some(_) => {}
+            None => {
+                let node_index = self.graph.add_node(object);
+
+                self.grid.add_to_grid(grid_pos, node_index);
+            }
+        }
     }
 
     fn remove_node_from_grid(&mut self, screen: Point) {
-        self.grid
-            .remove_from_grid(self.camera.screen_to_world(screen))
+        let obj = self
+            .grid
+            .get_object_in_world(self.camera.screen_to_world(screen));
+
+        match obj.cloned() {
+            // if object is present on grid
+            Some(idx) => {
+                match self.graph.raw_nodes().get(idx.index()) {
+                    // if object also present in graph
+                    Some(_) => {
+                        // remove node itself
+                        self.grid
+                            .remove_from_grid(self.camera.screen_to_world(screen));
+
+                        self.graph.remove_node(idx.clone());
+
+                        // remove edges
+                    }
+                    None => {
+                        // odd
+                        println!("Error: object is not present in graph");
+
+                        self.grid
+                            .remove_from_grid(self.camera.screen_to_world(screen));
+                    }
+                }
+            }
+            None => {}
+        }
     }
 
     fn start_connection(&mut self, screen: Point) {
-        let grid_point = self.grid.to_gridpoint(self.camera.screen_to_world(screen));
+        let grid_point = self.grid.to_grid(self.camera.screen_to_world(screen));
 
-        let start_node = self.grid.get_object_at(grid_point);
+        let start_node = self.grid.get_object_in_world(grid_point);
 
         match start_node {
             Some(_) => {
                 self.is_connecting = true;
                 self.connection_start = Point {
-                    x: grid_point.0.x as f32,
-                    y: grid_point.0.y as f32,
+                    x: grid_point.x as f32,
+                    y: grid_point.y as f32,
                 };
             }
             None => {}
@@ -350,9 +389,9 @@ impl CanvasStateInternal {
     }
 
     fn end_connection(&mut self, screen: Point) {
-        let grid_point = self.grid.to_gridpoint(self.camera.screen_to_world(screen));
-
-        let end_node = self.grid.get_object_at(grid_point);
+        let end_node = self
+            .grid
+            .get_object_in_world(self.camera.screen_to_world(screen));
 
         match end_node {
             Some(_) => {

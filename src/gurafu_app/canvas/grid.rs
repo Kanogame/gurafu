@@ -1,6 +1,7 @@
-use std::collections::{hash_map::Iter, HashMap};
+use std::collections::{HashMap, hash_map::Iter};
 
 use iced::{Point, Size, widget::canvas};
+use petgraph::graph::NodeIndex;
 
 use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
 
@@ -9,7 +10,7 @@ pub struct Grid {
 
     points: Vec<canvas::Path>,
 
-    objects: HashMap<GridPoint, Box<dyn Drawable>>,
+    objects: HashMap<GridPoint, NodeIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -28,14 +29,18 @@ impl PartialEq for GridPoint {
     }
 }
 
-impl Eq for GridPoint{}
+impl Eq for GridPoint {}
 
 impl Grid {
     pub fn new() -> Self {
-        Grid { step_size: 100_f32, objects: HashMap::new(), points: Vec::new() }
+        Grid {
+            step_size: 100_f32,
+            objects: HashMap::new(),
+            points: Vec::new(),
+        }
     }
 
-    pub fn objects(&self) -> Iter<'_, GridPoint, Box<dyn Drawable>> {
+    pub fn objects(&self) -> Iter<'_, GridPoint, NodeIndex> {
         self.objects.iter()
     }
 
@@ -80,8 +85,8 @@ impl Grid {
         &self.points
     }
 
-    pub fn get_object_at(&self, point: GridPoint) -> Option<&Box<dyn Drawable>> {
-        self.objects.get(&point)
+    pub fn get_object_in_world(&self, world: Point) -> Option<&NodeIndex> {
+        self.objects.get(&self.to_gridpoint(world))
     }
 
     // clamps the point to top left point on grid
@@ -96,20 +101,20 @@ impl Grid {
     pub fn to_gridpoint(&self, world: Point) -> GridPoint {
         GridPoint {
             0: Point {
-            x: ((world.x / self.step_size).round() * self.step_size)as i32,
-            y: ((world.y / self.step_size).round() * self.step_size)as i32,   
+                x: ((world.x / self.step_size).round() * self.step_size) as i32,
+                y: ((world.y / self.step_size).round() * self.step_size) as i32,
+            },
         }
-    }
     }
 
     pub fn to_grid(&self, world: Point) -> Point {
         Point {
             x: (world.x / self.step_size).round() * self.step_size,
-            y: (world.y / self.step_size).round() * self.step_size,   
+            y: (world.y / self.step_size).round() * self.step_size,
         }
     }
 
-    pub fn add_to_grid(&mut self, world: Point, object: Box<dyn Drawable>)  {
+    pub fn add_to_grid(&mut self, world: Point, object: NodeIndex) {
         let grid = self.to_gridpoint(world);
         if !self.objects.contains_key(&grid) {
             self.objects.insert(grid, object);
