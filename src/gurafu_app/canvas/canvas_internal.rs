@@ -60,7 +60,7 @@ impl CanvasStateInternal {
 
     pub fn draw_arrow(&self, screen: Point) -> Option<Arrow> {
         if self.is_connecting {
-            Some(Arrow {
+            return Some(Arrow {
                 start: self.connection_start,
                 end: self.camera.screen_to_world(screen),
                 line_width: 10.0,

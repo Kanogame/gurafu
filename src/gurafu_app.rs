@@ -1,13 +1,11 @@
-use iced::{
-    Border, Settings, Theme,
-    widget::{container, pane_grid},
-};
+use iced::{Settings, widget::pane_grid};
 
 use crate::gurafu_app::{player::PlayerMessage, toolbar::ToolbarMessage};
 
 mod canvas;
 mod file;
 mod player;
+mod styles;
 mod toolbar;
 
 pub struct GurafuApplication {
@@ -106,19 +104,19 @@ impl GurafuApplication {
             Pane::File => pane_grid::Content::new({
                 file::FileState::view(&state.file).map(GurafuMessage::File)
             })
-            .style(pane_grid_style),
+            .style(styles::pane_grid_style),
             Pane::Canvas => pane_grid::Content::new({
                 canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
             })
-            .style(pane_grid_style),
+            .style(styles::pane_grid_style),
             Pane::Player => pane_grid::Content::new({
                 player::PlayerState::view(&state.player).map(GurafuMessage::Player)
             })
-            .style(pane_grid_style),
+            .style(styles::pane_grid_style),
             Pane::Toolbar => pane_grid::Content::new({
                 toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
             })
-            .style(pane_grid_style),
+            .style(styles::pane_grid_style),
         })
         .on_resize(10, GurafuMessage::PaneResized)
         .into()
@@ -126,19 +124,5 @@ impl GurafuApplication {
 
     fn theme(&self) -> iced::Theme {
         iced::Theme::Dark
-    }
-}
-
-fn pane_grid_style(theme: &Theme) -> container::Style {
-    let palette = theme.extended_palette();
-
-    container::Style {
-        background: Some(iced::Background::Color(palette.background.base.color)),
-        border: Border {
-            width: 1.0,
-            radius: 0.into(),
-            color: palette.background.weak.color,
-        },
-        ..container::Style::default()
     }
 }

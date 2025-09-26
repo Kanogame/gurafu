@@ -3,6 +3,8 @@ use iced::{
     widget::{button, column, row, svg, text},
 };
 
+use crate::gurafu_app::styles;
+
 pub struct FileState {
     // state
 }
@@ -22,8 +24,8 @@ impl FileState {
                 ..Font::default()
             }),
             row![
-                button(svg("assets/icons/open.svg")), //.on_press(FileMessage::OpenFile),
-                button(svg("assets/icons/save.svg")), //.on_press(FileMessage::SaveFile),
+                button(svg("assets/icons/open.svg").style(styles::button_svg_style)), //.on_press(FileMessage::OpenFile),
+                button(svg("assets/icons/save.svg").style(styles::button_svg_style)), //.on_press(FileMessage::SaveFile),
             ]
             .spacing(20)
         ]
