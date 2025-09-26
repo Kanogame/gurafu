@@ -1,9 +1,10 @@
-use iced::{widget::{pane_grid, text}, Settings};
+use iced::{Settings, widget::pane_grid};
 
-use crate::gurafu_app::toolbar::ToolbarMessage;
+use crate::gurafu_app::{player::PlayerMessage, toolbar::ToolbarMessage};
 
 mod canvas;
 mod file;
+mod player;
 mod toolbar;
 
 pub struct GurafuApplication {
@@ -11,6 +12,7 @@ pub struct GurafuApplication {
     file: file::FileState,
     canvas: canvas::CanvasState,
     toolbar: toolbar::ToolbarState,
+    player: player::PlayerState,
 }
 
 #[derive(Debug)]
@@ -27,6 +29,7 @@ enum GurafuMessage {
     File(file::FileMessage),
     Canvas(canvas::CanvasMessage),
     Toolbar(toolbar::ToolbarMessage),
+    Player(player::PlayerMessage),
 }
 
 pub fn run() -> iced::Result {
@@ -69,6 +72,7 @@ impl GurafuApplication {
             file: file::FileState::new(),
             canvas: canvas::CanvasState::new(),
             toolbar: toolbar::ToolbarState::new(),
+            player: player::PlayerState::new(),
         }
     }
 
@@ -85,6 +89,12 @@ impl GurafuApplication {
                     state.canvas.toolbar_state = new_state;
                 }
             },
+            GurafuMessage::Player(message) => match message {
+                PlayerMessage::PlayPause => {
+                    state.player.playing = !state.player.playing;
+                }
+                _ => {}
+            },
         }
     }
 
@@ -96,7 +106,9 @@ impl GurafuApplication {
             Pane::Canvas => pane_grid::Content::new({
                 canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
             }),
-            Pane::Player => pane_grid::Content::new(text("this will be a player")),
+            Pane::Player => pane_grid::Content::new({
+                player::PlayerState::view(&state.player).map(GurafuMessage::Player)
+            }),
             Pane::Toolbar => pane_grid::Content::new({
                 toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
             }),
