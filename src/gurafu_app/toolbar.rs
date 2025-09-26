@@ -59,14 +59,14 @@ impl ToolbarState {
 
     //pub fn update(state: &mut ToolbarState, message: ToolbarMessage) {}
 
-    pub fn view(_: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
+    pub fn view(state: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
         column![
             Row::with_children(ToolbarOptions::VALUES.map(|el| {
                 button(svg(el.icon()).style(styles::button_svg_style))
                     .on_press(el.to_message())
                     .into()
             })),
-            //text(state.state.name()),
+            text(state.state.name()),
         ]
         .into()
     }

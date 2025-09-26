@@ -20,9 +20,7 @@ pub fn pane_grid_style(theme: &Theme) -> container::Style {
     }
 }
 
-pub fn button_svg_style(theme: &Theme, _: Status) -> svg::Style {
-    let palette = theme.extended_palette();
-
+pub fn button_svg_style(_: &Theme, _: Status) -> svg::Style {
     svg::Style {
         color: Some(color!(0xffffff)),
     }
