@@ -2,13 +2,7 @@ use core::fmt;
 
 use iced::{
     Point,
-    widget::canvas::{
-        self, Path,
-        path::{
-            Builder,
-            lyon_path::geom::{Vector, euclid::Vector2D},
-        },
-    },
+    widget::canvas::{self, Path, path::lyon_path::geom::Vector},
 };
 
 use crate::gurafu_app::canvas::camera::Camera;
@@ -23,7 +17,7 @@ pub struct Circle {
 }
 
 impl fmt::Debug for Circle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return Ok(());
     }
 }
@@ -47,7 +41,7 @@ pub struct Arrow {
 }
 
 impl fmt::Debug for Arrow {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return Ok(());
     }
 }

@@ -1,4 +1,7 @@
-use iced::widget::{button, column, text};
+use iced::{
+    Font, font,
+    widget::{button, column, row, svg, text},
+};
 
 pub struct FileState {
     // state
@@ -14,9 +17,18 @@ impl FileState {
 
     pub fn view(&self) -> iced::Element<'_, FileMessage> {
         column![
-            button(text("open file")), //.on_press(FileMessage::OpenFile),
-            button(text("save file")), //.on_press(FileMessage::SaveFile),
+            text("Browser").size(16).font(Font {
+                weight: font::Weight::Bold,
+                ..Font::default()
+            }),
+            row![
+                button(svg("assets/icons/open.svg")), //.on_press(FileMessage::OpenFile),
+                button(svg("assets/icons/save.svg")), //.on_press(FileMessage::SaveFile),
+            ]
+            .spacing(20)
         ]
+        .padding(5)
+        .spacing(5)
         .into()
     }
 }

@@ -1,7 +1,7 @@
-use iced::widget::{Row, button, row, svg};
+use iced::widget::{button, row, svg};
 
 pub struct PlayerState {
-    pub speed: i32,
+    //pub speed: i32,
     pub playing: bool,
 }
 
@@ -15,7 +15,7 @@ pub enum PlayerMessage {
 impl PlayerState {
     pub fn new() -> Self {
         PlayerState {
-            speed: 1,
+            //speed: 1,
             playing: false,
         }
     }

@@ -1,9 +1,9 @@
-use std::collections::{HashMap, hash_map::Iter};
+use std::collections::HashMap;
 
 use iced::{Point, Size, widget::canvas};
 use petgraph::graph::NodeIndex;
 
-use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
+use crate::gurafu_app::canvas::camera::Camera;
 
 pub struct Grid {
     step_size: f32,
@@ -40,9 +40,9 @@ impl Grid {
         }
     }
 
-    pub fn objects(&self) -> Iter<'_, GridPoint, NodeIndex> {
-        self.objects.iter()
-    }
+    //pub fn objects(&self) -> Iter<'_, GridPoint, NodeIndex> {
+    //    self.objects.iter()
+    //}
 
     pub fn update_grid_points(&mut self, camera: &Camera, size: Size) {
         // top left corner of screen in world cords
