@@ -10,9 +10,6 @@ It can:
 6. Display algorithms step-by-step 
 
 roadmap:
-2. link node editor to graph
-    - adding node creates a node
-    - adding connection creates connection
 3. add import/export via file
     - draw from graph type
 4. Implement algo
