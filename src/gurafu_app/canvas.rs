@@ -6,7 +6,11 @@ use iced::{
         canvas::{self, Path},
     },
 };
-use petgraph::Graph;
+use petgraph::{
+    Graph,
+    prelude::StableGraph,
+    visit::{IntoEdgeReferences, IntoNodeReferences},
+};
 
 use crate::gurafu_app::{
     canvas::{
@@ -35,7 +39,7 @@ pub struct CanvasStateInternal {
     camera: Camera,
     grid: Grid,
     toolbar_state: ToolbarOptions,
-    graph: Graph<Circle, Arrow>,
+    graph: StableGraph<Circle, Arrow>,
 }
 
 #[derive(Clone)]
@@ -107,10 +111,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                         ScrollDelta::Pixels { x, y } => Vector { x: x, y: y },
                     };
 
-                    println!("{:?}", delta_vec.y);
-
                     state.camera.apply_scroll(delta_vec.y / 4_f32);
-                    println!("{:?}", state.camera);
 
                     return CAPTURED;
                 }
@@ -137,18 +138,20 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         }
 
         // fill nodes on canvas
-        for node in state.graph.raw_nodes() {
-            frame.fill(
-                &node.weight.into_path(&state.camera),
-                theme.palette().primary,
-            );
+        for (_, crcl) in state.graph.node_references() {
+            frame.fill(&crcl.into_path(&state.camera), theme.palette().primary);
         }
 
         // fill edges on canvas
-        for edge in state.graph.raw_edges() {
+        for edge in state.graph.edge_references() {
             frame.fill(
-                &edge.weight.into_path(&state.camera),
-                theme.palette().primary,
+                &edge.weight().into_path(&state.camera),
+                Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                },
             );
         }
 
@@ -160,6 +163,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                         end: state.camera.screen_to_world(c),
                         line_width: 10.0,
                         arrowhead_size: 30.0,
+                        offset: 0.0,
                     };
                     frame.fill(
                         &connection.into_path(&state.camera),
@@ -223,7 +227,7 @@ impl CanvasStateInternal {
             drag_offset: Point { x: 0_f32, y: 0_f32 },
             is_connecting: false,
             connection_start: Point { x: 0_f32, y: 0_f32 },
-            graph: Graph::new(),
+            graph: StableGraph::new(),
         };
     }
 
@@ -346,19 +350,18 @@ impl CanvasStateInternal {
     }
 
     fn remove_node_from_grid(&mut self, screen: Point) {
-        let obj = self
-            .grid
-            .get_object_in_world(self.camera.screen_to_world(screen));
+        let grid_pos = self.grid.to_grid(self.camera.screen_to_world(screen));
+
+        let obj = self.grid.get_object_in_world(grid_pos);
 
         match obj.cloned() {
             // if object is present on grid
             Some(idx) => {
-                match self.graph.raw_nodes().get(idx.index()) {
+                match self.graph.node_weight(idx) {
                     // if object also present in graph
                     Some(_) => {
                         // remove node itself
-                        self.grid
-                            .remove_from_grid(self.camera.screen_to_world(screen));
+                        self.grid.remove_from_grid(grid_pos);
 
                         self.graph.remove_node(idx.clone());
 
@@ -366,7 +369,7 @@ impl CanvasStateInternal {
                     }
                     None => {
                         // odd
-                        println!("Error: object is not present in graph");
+                        println!("Error: object is not present in grid");
 
                         self.grid
                             .remove_from_grid(self.camera.screen_to_world(screen));
@@ -406,6 +409,7 @@ impl CanvasStateInternal {
                     end: self.grid.to_grid(self.camera.screen_to_world(screen)),
                     line_width: 5.0,
                     arrowhead_size: 10.0,
+                    offset: 30.0,
                 },
             );
         }

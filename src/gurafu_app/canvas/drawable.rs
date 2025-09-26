@@ -1,3 +1,5 @@
+use core::fmt;
+
 use iced::{
     Point,
     widget::canvas::{
@@ -20,6 +22,12 @@ pub struct Circle {
     pub radius: f32,
 }
 
+impl fmt::Debug for Circle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return Ok(());
+    }
+}
+
 impl Drawable for Circle {
     fn into_path(&self, camera: &Camera) -> Path {
         Path::circle(
@@ -34,13 +42,20 @@ pub struct Arrow {
     pub end: Point,
     pub line_width: f32,
     pub arrowhead_size: f32,
+    pub offset: f32,
     // ?
+}
+
+impl fmt::Debug for Arrow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return Ok(());
+    }
 }
 
 impl Drawable for Arrow {
     fn into_path(&self, camera: &Camera) -> Path {
-        let screen_start = camera.world_to_screen(self.start);
-        let screen_end = camera.world_to_screen(self.end);
+        let mut screen_start = camera.world_to_screen(self.start);
+        let mut screen_end = camera.world_to_screen(self.end);
 
         // line
         // how this works:
@@ -64,6 +79,9 @@ impl Drawable for Arrow {
             x: offset.x,
             y: offset.y,
         };
+
+        screen_start = screen_start + unit * self.offset;
+        screen_end = screen_end - unit * self.offset;
 
         let rectangle_end = screen_end - unit * self.arrowhead_size;
 

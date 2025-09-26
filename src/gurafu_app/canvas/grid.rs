@@ -13,7 +13,7 @@ pub struct Grid {
     objects: HashMap<GridPoint, NodeIndex>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct GridPoint(pub iced::Point<i32>);
 
 impl std::hash::Hash for GridPoint {
