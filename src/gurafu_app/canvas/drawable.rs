@@ -60,8 +60,8 @@ impl Drawable for Arrow {
 
         // we get a vector of length 1
         let unit = iced::Vector {
-            x: v.x / v.length(),
-            y: v.y / v.length(),
+            x: v.x / v.length() / camera.scale,
+            y: v.y / v.length() / camera.scale,
         };
 
         // we get a perpendicular vector to unit

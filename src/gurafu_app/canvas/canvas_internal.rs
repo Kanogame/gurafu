@@ -5,7 +5,6 @@ use petgraph::{
     Direction::{Incoming, Outgoing},
     graph::NodeIndex,
     prelude::StableGraph,
-    visit::EdgeCount,
 };
 
 use crate::gurafu_app::{
@@ -368,8 +367,16 @@ impl CanvasStateInternal {
         visited.contains(&v)
     }
 
-    pub fn solve_flurry(&self, start: NodeIndex) -> Option<Vec<NodeIndex>> {
+    pub fn solve_flurry(&self) -> Option<Vec<NodeIndex>> {
         let mut g = self.graph.clone();
+
+        let start = g
+            .node_indices()
+            .find(|&n| g.neighbors_directed(n, Outgoing).next().is_some());
+        let start = match start {
+            Some(s) => s,
+            None => return Some(Vec::new()),
+        };
 
         // Basic prechecks
         // in-degree == out-degree for all vertices

@@ -37,17 +37,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         let pos = cursor.position_in(bounds);
 
         if self.solving_required {
-            println!(
-                "{:?}",
-                state.solve_flurry(
-                    state
-                        .grid
-                        .objects()
-                        .find_map(|(_, idx)| Some(idx))
-                        .unwrap()
-                        .clone(),
-                )
-            );
+            println!("{:?}", state.solve_flurry());
         }
 
         if pos.is_none() {
@@ -84,6 +74,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                     };
 
                     state.camera.apply_scroll(delta_vec.y / 4_f32);
+                    state.grid.update_grid_points(&state.camera, bounds.size());
 
                     return helpers::CAPTURED;
                 }
@@ -173,7 +164,7 @@ impl CanvasState {
         widget::canvas(state).into()
     }
 
-    pub fn update(&mut self, message: CanvasMessage) {
-        self.solving_required = true;
+    pub fn update(&mut self, _: CanvasMessage) {
+        self.solving_required = !self.solving_required;
     }
 }
