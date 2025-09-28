@@ -11,6 +11,7 @@ pub trait Drawable {
     fn into_path(&self, camera: &Camera) -> Path;
 }
 
+#[derive(Clone)]
 pub struct Circle {
     pub center: Point,
     pub radius: f32,
@@ -31,6 +32,7 @@ impl Drawable for Circle {
     }
 }
 
+#[derive(Clone)]
 pub struct Arrow {
     pub start: Point,
     pub end: Point,

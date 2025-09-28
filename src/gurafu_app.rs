@@ -1,6 +1,6 @@
 use iced::{Settings, widget::pane_grid};
 
-use crate::gurafu_app::{player::PlayerMessage, toolbar::ToolbarMessage};
+use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
 
 mod canvas;
 mod file;
@@ -93,6 +93,7 @@ impl GurafuApplication {
             GurafuMessage::Player(message) => match message {
                 PlayerMessage::PlayPause => {
                     state.player.playing = !state.player.playing;
+                    state.canvas.update(CanvasMessage::SolveFlurry);
                 }
                 _ => {}
             },

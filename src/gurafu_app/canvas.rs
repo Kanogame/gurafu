@@ -15,10 +15,13 @@ mod helpers;
 #[derive(Clone)]
 pub struct CanvasState {
     pub toolbar_state: ToolbarOptions,
+    pub solving_required: bool,
 }
 
 #[derive(Debug, Clone)]
-pub enum CanvasMessage {}
+pub enum CanvasMessage {
+    SolveFlurry,
+}
 
 impl canvas::Program<CanvasMessage> for CanvasState {
     type State = canvas_internal::CanvasStateInternal;
@@ -32,6 +35,20 @@ impl canvas::Program<CanvasMessage> for CanvasState {
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         state.toolbar_state = self.toolbar_state.clone();
         let pos = cursor.position_in(bounds);
+
+        if self.solving_required {
+            println!(
+                "{:?}",
+                state.solve_flurry(
+                    state
+                        .grid
+                        .objects()
+                        .find_map(|(_, idx)| Some(idx))
+                        .unwrap()
+                        .clone(),
+                )
+            );
+        }
 
         if pos.is_none() {
             state.reset_on_oob();
@@ -148,10 +165,15 @@ impl CanvasState {
     pub fn new() -> Self {
         CanvasState {
             toolbar_state: ToolbarOptions::new(),
+            solving_required: false,
         }
     }
 
     pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
         widget::canvas(state).into()
+    }
+
+    pub fn update(&mut self, message: CanvasMessage) {
+        self.solving_required = true;
     }
 }
