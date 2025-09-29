@@ -83,7 +83,20 @@ impl GurafuApplication {
                 state.panes.resize(split, ratio);
             }
             GurafuMessage::File(_) => {}
-            GurafuMessage::Canvas(_) => {}
+            GurafuMessage::Canvas(message) => match message {
+                CanvasMessage::SolveFlueryResponce(resp) => {
+                    match resp {
+                        Some(vec) => {
+                            println!("the Euler's circuit is: {:?}", vec)
+                        }
+                        None => {
+                            println!("there is no Euler's circuit in following graph")
+                        }
+                    };
+
+                    state.canvas.solving_required = false;
+                }
+            },
             GurafuMessage::Toolbar(message) => match message {
                 ToolbarMessage::ChosenState(new_state) => {
                     state.toolbar.state = new_state.clone();
@@ -93,7 +106,7 @@ impl GurafuApplication {
             GurafuMessage::Player(message) => match message {
                 PlayerMessage::PlayPause => {
                     state.player.playing = !state.player.playing;
-                    state.canvas.update(CanvasMessage::SolveFlurry);
+                    state.canvas.solving_required = true;
                 }
                 _ => {}
             },

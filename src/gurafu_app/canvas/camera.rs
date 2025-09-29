@@ -41,7 +41,12 @@ impl Camera {
     }
 
     pub fn apply_scroll(&mut self, scroll: f32) {
-        self.scale += scroll;
+        self.scale -= scroll;
+        if self.scale <= 0.0 {
+            self.scale = 0.25
+        } else if self.scale > 3.0 {
+            self.scale = 3.0
+        }
     }
 
     pub fn screen_to_world(&self, screen_coords: Point) -> Point {

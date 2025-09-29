@@ -20,7 +20,7 @@ pub struct CanvasState {
 
 #[derive(Debug, Clone)]
 pub enum CanvasMessage {
-    SolveFlurry,
+    SolveFlueryResponce(Option<Vec<usize>>),
 }
 
 impl canvas::Program<CanvasMessage> for CanvasState {
@@ -37,7 +37,19 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         let pos = cursor.position_in(bounds);
 
         if self.solving_required {
-            println!("{:?}", state.solve_flurry());
+            let resp = state.solve_flurry();
+
+            return (
+                canvas::event::Status::Captured,
+                Some(CanvasMessage::SolveFlueryResponce(match resp {
+                    Some(nvec) => Some(
+                        nvec.iter()
+                            .map(|node_index| node_index.index())
+                            .collect::<Vec<usize>>(),
+                    ),
+                    None => None,
+                })),
+            );
         }
 
         if pos.is_none() {
@@ -162,9 +174,5 @@ impl CanvasState {
 
     pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
         widget::canvas(state).into()
-    }
-
-    pub fn update(&mut self, _: CanvasMessage) {
-        self.solving_required = !self.solving_required;
     }
 }
