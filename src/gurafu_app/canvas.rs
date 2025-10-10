@@ -1,3 +1,5 @@
+
+
 use iced::{
     Color, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
@@ -5,12 +7,13 @@ use iced::{
 };
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
 
-use crate::gurafu_app::{canvas::drawable::Drawable, toolbar::ToolbarOptions};
+use crate::gurafu_app::{canvas::{canvas_frame::CanvasFrame, drawable::{Drawable}}, toolbar::ToolbarOptions};
 
 mod camera;
 mod canvas_internal;
 mod drawable;
 mod helpers;
+mod canvas_frame;
 
 #[derive(Clone)]
 pub struct CanvasState {
@@ -39,9 +42,15 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         if self.solving_required {
             let resp = state.solve_flurry();
 
+            // highlight
+
+            if resp.is_some() {
+                state.highlight_solution(resp.clone().unwrap());
+            }
+
             return (
                 canvas::event::Status::Captured,
-                Some(CanvasMessage::SolveFlueryResponce(match resp {
+                Some(CanvasMessage::SolveFlueryResponce(match resp.clone() {
                     Some(nvec) => Some(
                         nvec.iter()
                             .map(|node_index| node_index.index())
@@ -105,30 +114,21 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry> {
         // We prepare a new `Frame`
-        let mut frame = canvas::Frame::new(renderer, bounds.size());
+        let mut frame = CanvasFrame::new(renderer, bounds.size(), state.camera.clone());
+
+        //let cnt = state.graph.node_count() + state.graph.edge_count();
+        //let points = state.grid.get_grid_points();
 
         // fill grid points (alignment helpers)
         for point in state.grid.get_grid_points() {
             frame.fill(point, theme.palette().success);
         }
 
-        // fill nodes on canvas
-        for (_, crcl) in state.graph.node_references() {
-            frame.fill(&crcl.into_path(&state.camera), theme.palette().primary);
-        }
+        let mut drawable_list: Vec<&dyn Drawable> = Vec::with_capacity(state.graph.edge_count() + state.graph.node_count());
 
-        // fill edges on canvas
-        for edge in state.graph.edge_references() {
-            frame.fill(
-                &edge.weight().into_path(&state.camera),
-                Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 1.0,
-                },
-            );
-        }
+        drawable_list = state.graph.node_references().map(|(_, c)| c as &dyn Drawable).collect();
+        drawable_list.append(&mut state.graph.edge_references().map(|el| el.weight() as &dyn Drawable).collect());
+        frame.fill_frame(drawable_list);
 
         match cursor.position_in(bounds) {
             Some(c) => match state.draw_arrow(c) {
