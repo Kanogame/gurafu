@@ -1,19 +1,13 @@
 use std::collections::{HashSet, VecDeque};
 
-use iced::{Point, mouse, widget::canvas};
+use iced::{mouse, widget::canvas, Color, Point, Theme};
 use petgraph::{
-    Direction::{Incoming, Outgoing},
-    graph::NodeIndex,
-    prelude::StableGraph,
+    algo, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef, Direction::{self, Incoming, Outgoing}
 };
 
 use crate::gurafu_app::{
     canvas::{
-        CanvasMessage,
-        camera::Camera,
-        canvas_internal::grid::Grid,
-        drawable::{Arrow, Circle},
-        helpers,
+        camera::Camera, canvas_internal::grid::Grid, drawable::{arrow::Arrow, circle::Circle, Drawable}, helpers, CanvasMessage
     },
     toolbar::ToolbarOptions,
 };
@@ -72,6 +66,7 @@ impl CanvasStateInternal {
                 line_width: 10.0,
                 arrowhead_size: 30.0,
                 offset: 0.0,
+                color: Color::WHITE
             });
         }
         None
@@ -212,12 +207,13 @@ impl CanvasStateInternal {
         }
     }
 
-    fn create_new_node_on_grid(&mut self, screen: Point) {
+    fn create_new_node_on_grid(&mut self, screen: Point,) {
         let grid_pos = self.grid.to_grid(self.camera.screen_to_world(screen));
 
         let object = Circle {
             center: grid_pos,
             radius: 30_f32,
+            color: Theme::Dark.palette().primary
         };
 
         match self.grid.get_object_in_world(grid_pos) {
@@ -291,6 +287,7 @@ impl CanvasStateInternal {
                     line_width: 5.0,
                     arrowhead_size: 10.0,
                     offset: 30.0,
+                    color: Color::WHITE
                 },
             );
         }
@@ -298,135 +295,142 @@ impl CanvasStateInternal {
         self.is_connecting = false;
     }
 
-    fn is_strongly_connected_nonzero(&self) -> bool {
-        let g = &self.graph;
-
-        // Quick check: reachable set from a start vertex with nonzero deg should include all vertices with nonzero degree
-        let start = g.node_indices().find(|&n| {
-            g.neighbors_directed(n, Outgoing).next().is_some()
-                || g.neighbors_directed(n, Incoming).next().is_some()
-        });
-        if start.is_none() {
-            return true;
-        } // empty graph trivially
-        let start = start.unwrap();
-
-        // BFS on directed graph following outgoing edges (to ensure single strongly-connected component is more costly;
-        // for Euler circuit we need strongly connected ignoring direction — here we'll check reachability on underlying undirected edges)
-        let mut visited = HashSet::new();
-        let mut q = VecDeque::new();
-        visited.insert(start);
-        q.push_back(start);
-        while let Some(v) = q.pop_front() {
-            for nbr in g.neighbors_directed(v, Outgoing) {
-                if !visited.contains(&nbr) {
-                    visited.insert(nbr);
-                    q.push_back(nbr);
-                }
-            }
-            for nbr in g.neighbors_directed(v, Incoming) {
-                if !visited.contains(&nbr) {
-                    visited.insert(nbr);
-                    q.push_back(nbr);
-                }
-            }
-        }
-
-        // all vertices with nonzero degree must be in visited
-        for v in g.node_indices() {
-            if g.neighbors_directed(v, Outgoing).next().is_some()
-                || g.neighbors_directed(v, Incoming).next().is_some()
-            {
-                if !visited.contains(&v) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
-    fn would_be_bridge(&self, u: NodeIndex, v: NodeIndex) -> bool {
-        // Remove edge (u->v) temporarily and check if v is still reachable from u using directed edges.
-        // If not reachable, edge is a bridge (necessary for connectivity of remaining traversal).
-        let mut temp = self.graph.clone();
-        temp.remove_edge(temp.find_edge(u, v).unwrap());
-
-        // BFS/DFS from u following outgoing edges to see if we can reach v (consider only nodes with remaining degree)
-        let mut visited = HashSet::new();
-        let mut stack = Vec::new();
-        visited.insert(u);
-        stack.push(u);
-        while let Some(x) = stack.pop() {
-            for nbr in temp.neighbors_directed(x, Outgoing) {
-                if !visited.contains(&nbr) {
-                    visited.insert(nbr);
-                    stack.push(nbr);
-                }
-            }
-        }
-        visited.contains(&v)
-    }
-
-    pub fn solve_flurry(&self) -> Option<Vec<NodeIndex>> {
-        let mut g = self.graph.clone();
-
-        let start = g
-            .node_indices()
-            .find(|&n| g.neighbors_directed(n, Outgoing).next().is_some());
-        let start = match start {
-            Some(s) => s,
-            None => return Some(Vec::new()),
-        };
-
-        // Basic prechecks
-        // in-degree == out-degree for all vertices
-        for n in g.node_indices() {
-            let out = g.neighbors_directed(n, Outgoing).count();
-            let inp = g.neighbors_directed(n, Incoming).count();
-            if out != inp {
-                return None;
-            }
-        }
-        if !self.is_strongly_connected_nonzero() {
+     pub fn solve_flurry(&self) -> Option<Vec<NodeIndex>> {
+        let mut graph = self.graph.clone();
+        
+        // Check if graph has an Eulerian circuit using standard conditions
+        if !self.is_eulerian() {
             return None;
         }
+
+        // Find start node (any node with outgoing edges)
+        let start = graph.node_indices()
+            .find(|&node| graph.edges_directed(node, Direction::Outgoing).count() > 0)
+            .unwrap_or_else(|| graph.node_indices().next().unwrap_or(NodeIndex::new(0)));
 
         let mut circuit = Vec::new();
         let mut current = start;
         circuit.push(current);
 
-        // Maintain adjacency counts (multiedges not supported by GraphMap; if needed, use Graph and edge indices)
-        while g.neighbors_directed(current, Outgoing).next().is_some() {
-            // gather outgoing edges from current
-            let outs: Vec<NodeIndex> = g.neighbors_directed(current, Outgoing).collect();
+        // Use a stack to avoid recursion limits in large graphs
+        let mut stack = Vec::new();
+        
+        while !stack.is_empty() || graph.edges_directed(current, Direction::Outgoing).count() > 0 {
+            if graph.edges_directed(current, Direction::Outgoing).count() == 0 {
+                // Backtrack
+                current = stack.pop().unwrap();
+                circuit.push(current);
+            } else {
+                // Move forward
+                stack.push(current);
+                
+                // Get all outgoing edges
+                let edges: Vec<NodeIndex> = graph
+                    .edges_directed(current, Direction::Outgoing)
+                    .map(|edge| edge.target())
+                    .collect();
 
-            // choose an edge that is not a bridge if possible
-            let mut chosen = None;
-            for &v in &outs {
-                // if it's the only outgoing edge, must choose it
-                if outs.len() == 1 {
-                    chosen = Some(v);
-                    break;
+                // Choose next node - try to avoid bridges when possible
+                let next = if edges.len() == 1 {
+                    edges[0]
+                } else {
+                    // For multiple choices, pick one that's not a bridge if possible
+                    edges.iter()
+                        .find(|&&neighbor| !self.is_bridge_simple(current, neighbor))
+                        .copied()
+                        .unwrap_or(edges[0])
+                };
+
+                // Remove the edge and move
+                if let Some(edge_id) = graph.find_edge(current, next) {
+                    graph.remove_edge(edge_id);
                 }
-                // choose v if removing (current->v) does not break reachability
-                if self.would_be_bridge(current, v) {
-                    // removing (current->v) still leaves v reachable -> NOT a bridge
-                    // note: would_be_bridge returns true if v remains reachable, so invert logic
-                    chosen = Some(v);
-                    break;
-                }
+                current = next;
             }
-            // if not found (all edges are bridges by our check), pick first
-            if chosen.is_none() {
-                chosen = outs.into_iter().next();
-            }
-            let v = chosen.unwrap();
-            // remove edge and move
-            g.remove_edge(g.find_edge(current, v).unwrap());
-            current = v;
-            circuit.push(current);
         }
 
         Some(circuit)
+    }
+
+    fn is_eulerian(&self) -> bool {
+        let graph = &self.graph;
+        
+        // Check degree condition: in_degree == out_degree for all vertices
+        for node in graph.node_indices() {
+            let in_degree = graph.edges_directed(node, Direction::Incoming).count();
+            let out_degree = graph.edges_directed(node, Direction::Outgoing).count();
+            
+            if in_degree != out_degree {
+                return false;
+            }
+        }
+
+        // Check connectivity using petgraph's built-in function
+        self.is_weakly_connected()
+    }
+
+fn is_weakly_connected(&self) -> bool {
+    let graph = &self.graph;
+    
+    if graph.node_count() == 0 {
+        return true;
+    }
+
+    let start = graph.node_indices().next().unwrap();
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+    visited.insert(start);
+    queue.push_back(start);
+
+    while let Some(node) = queue.pop_front() {
+        for neighbor in graph.neighbors_undirected(node) {
+            if !visited.contains(&neighbor) {
+                visited.insert(neighbor);
+                queue.push_back(neighbor);
+            }
+        }
+    }
+
+    // For Eulerian circuits, isolated vertices don't matter
+    // Only check that all vertices with edges are connected
+    visited.len() + graph.node_indices()
+        .filter(|&node| {
+            graph.edges_directed(node, Direction::Outgoing).count() == 0 &&
+            graph.edges_directed(node, Direction::Incoming).count() == 0
+        })
+        .count() == graph.node_count()
+}
+
+    fn is_bridge_simple(&self, u: NodeIndex, v: NodeIndex) -> bool {
+        // Simple bridge detection: if removing u->v disconnects the graph
+        let mut temp_graph = self.graph.clone();
+        
+        if let Some(edge_id) = temp_graph.find_edge(u, v) {
+            temp_graph.remove_edge(edge_id);
+            
+            // Check if v is still reachable from u in the undirected sense
+            let reachable = algo::dijkstra(&temp_graph, u, None, |_| 1);
+            !reachable.contains_key(&v)
+        } else {
+            false
+        }
+    }
+
+
+    pub fn highlight_solution(&mut self, solution: Vec<NodeIndex>) {
+        println!("{:?}", self.graph);
+        
+        // highlight nodes
+        for idx in solution.clone() {
+            self.graph.node_weight_mut(idx).unwrap().highlight_solution();
+        }
+        
+        // highlight edges
+        for els in solution.iter().rev().collect::<Vec<&NodeIndex>>().windows(2) {
+            println!("{:?}", els);
+
+            let eidx = self.graph.find_edge(*els[0], *els[1]).unwrap();
+            self.graph.edge_weight_mut(eidx).unwrap().highlight_solution();
+        }
     }
 }
