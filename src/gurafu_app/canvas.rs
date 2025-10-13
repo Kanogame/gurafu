@@ -115,7 +115,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             frame.fill(point, theme.palette().success);
         }
 
-        let mut drawable_list: Vec<&dyn Drawable> = Vec::with_capacity(state.graph.edge_count() + state.graph.node_count());
+        let mut drawable_list: Vec<&dyn Drawable>;
 
         drawable_list = state.graph.node_references().map(|(_, c)| c as &dyn Drawable).collect();
         drawable_list.append(&mut state.graph.edge_references().map(|el| el.weight() as &dyn Drawable).collect());

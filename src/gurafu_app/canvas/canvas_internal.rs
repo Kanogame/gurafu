@@ -1,12 +1,12 @@
 
 use iced::{mouse, widget::{canvas, }, Color, Point, Theme};
 use petgraph::{
-    algo, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef, Direction::{self, Incoming, Outgoing}, Graph
+    graph::NodeIndex, prelude::StableGraph, visit::EdgeRef, Direction
 };
 
 use crate::gurafu_app::{
     canvas::{
-        camera::Camera, canvas_internal::grid::Grid, drawable::{arrow::Arrow, circle::Circle, Drawable}, helpers, CanvasMessage
+        camera::Camera, canvas_internal::grid::Grid, drawable::{arrow::Arrow, circle::Circle}, helpers, CanvasMessage
     },
     toolbar::ToolbarOptions,
 };
