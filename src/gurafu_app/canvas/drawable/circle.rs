@@ -20,7 +20,15 @@ impl Circle {
     }
 
     pub fn highlight_possibility(&mut self) {
-        self.color = Theme::Dark.extended_palette().danger.weak.color;
+        self.color = Theme::Dark.extended_palette().danger.strong.color;
+    }
+
+    pub fn highlight_current(&mut self) {
+        self.color = Theme::Dark.extended_palette().danger.base.color;
+    }
+    
+    pub fn reset_highlight(&mut self) {
+        self.color = Theme::Dark.palette().primary;
     }
 }
 

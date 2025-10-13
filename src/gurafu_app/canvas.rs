@@ -40,34 +40,17 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         state.toolbar_state = self.toolbar_state.clone();
         let pos = cursor.position_in(bounds);
 
-        if self.solving_required {
+        if self.solving_required && !state.step_solved {
             state.step_algorithm();
+            state.step_solved = true;
 
             return (
                 canvas::event::Status::Captured,
                 Some(CanvasMessage::SolveFlueryResponce)
             );
-
-            //let resp = state.solve_flurry();
-//
-            //// highlight
-//
-            //if resp.is_some() {
-            //    state.highlight_solution(resp.clone().unwrap());
-            //}
-//
-            //return (
-            //    canvas::event::Status::Captured,
-            //    Some(CanvasMessage::SolveFlueryResponce(match resp.clone() {
-            //        Some(nvec) => Some(
-            //            nvec.iter()
-            //                .map(|node_index| node_index.index())
-            //                .collect::<Vec<usize>>(),
-            //        ),
-            //        None => None,
-            //    })),
-            //);
         }
+
+        state.step_solved = false;
 
         if pos.is_none() {
             state.reset_on_oob();

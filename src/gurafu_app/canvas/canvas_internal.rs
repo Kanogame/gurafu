@@ -29,24 +29,31 @@ pub struct CanvasStateInternal {
     pub toolbar_state: ToolbarOptions,
     pub graph: StableGraph<Circle, Arrow>,
 
-    // algo
+    // Algorithm state
+    pub step_solved: bool,
     algo_state: FluerryState,
     stack: Vec<NodeIndex>,
     circuit: Vec<NodeIndex>,
     current_node: Option<NodeIndex>,
     graph_clone: StableGraph<Circle, Arrow>,
-
-    current_outgoing: Vec<NodeIndex>,
+    
+    // Step visualization state
+    current_outgoing: Vec<(NodeIndex, petgraph::graph::EdgeIndex)>,
     current_idx: usize,
-    next: NodeIndex,
+    next_candidate: Option<NodeIndex>,
+    visited_edges: Vec<petgraph::graph::EdgeIndex>,
+    step_explanation: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum FluerryState {
     NotStarted,
-    InProcess,
+    Initializing,
+    CheckingOutgoing,
     ChoosingNext,
     Advancing,
+    Backtracking,
+    Completed,
     Failed,
 }
 
@@ -69,6 +76,7 @@ impl CanvasStateInternal {
             connection_start: Point { x: 0_f32, y: 0_f32 },
             graph: StableGraph::new(),
 
+            step_solved: false,
             algo_state: FluerryState::NotStarted,
             stack: Vec::new(),
             circuit: Vec::new(),
@@ -76,7 +84,9 @@ impl CanvasStateInternal {
             graph_clone: StableGraph::new(),
             current_outgoing: Vec::new(),
             current_idx: 0,
-            next: NodeIndex::new(0),
+            next_candidate: None,
+            visited_edges: Vec::new(),
+            step_explanation: String::new(),
         };
     }
 
@@ -322,181 +332,230 @@ impl CanvasStateInternal {
 
         self.is_connecting = false;
     }
-
-    pub fn step_algorithm(&mut self) {
-        println!("{:?} {:?} {:?} {:?} {:?}", self.algo_state, self.stack, self.circuit, self.current_node, self.graph_clone);
+ pub fn step_algorithm(&mut self) {
+        let cur_state = self.algo_state;
 
         match self.algo_state {
-            FluerryState::NotStarted => {
-                // 1. clone graph
-                self.graph_clone = self.graph.clone();
-
-                // 2. find start node (any node with outgoing edges)
-                self.current_node = self.graph_clone.node_indices()
-                .find(|&node| self.graph_clone.edges_directed(node, Direction::Outgoing).count() > 0);
-
-                // 3. clear stack
-                self.stack.clear();
-
-                // 4. change state
-                self.algo_state = FluerryState::InProcess;
+            FluerryState::NotStarted => self.initialize_algorithm(),
+            FluerryState::Initializing => self.find_start_node(),
+            FluerryState::CheckingOutgoing => self.check_outgoing_edges(),
+            FluerryState::ChoosingNext => self.choose_next_edge(),
+            FluerryState::Advancing => self.advance_to_next(),
+            FluerryState::Backtracking => self.backtrack(),
+            FluerryState::Completed | FluerryState::Failed => {
+                // Algorithm finished, do nothing
+                self.step_explanation = "Algorithm completed".to_string();
             }
-            FluerryState::InProcess => {
-                if !self.stack.is_empty() || 
-                    self.current_node.is_some_and(|cur| 
-                        self.graph_clone.edges_directed(cur, Direction::Outgoing).count() > 0) {
-
-                    // if we found ourself in case when there are no outgoing paths from here, then we backtrack
-                    if self.graph_clone.edges_directed(self.current_node.unwrap(), Direction::Outgoing).count() == 0 {
-                        // Backtrack
-                        self.current_node = self.stack.pop();
-                        self.circuit.push(self.current_node.unwrap());
-                        println!("backtrack");
-                    } else {
-                        // Move forward
-                        // Pushing current to stack
-                        self.stack.push(self.current_node.unwrap());
-                        self.graph.node_weight_mut(self.current_node.unwrap()).unwrap().highlight_solution();
-                        
-                        // Get all indexes of outgoing edges of current
-                        self.current_outgoing = self.graph_clone
-                            .edges_directed(self.current_node.unwrap(), Direction::Outgoing)
-                            .map(|edge| edge.target())
-                            .collect();
-
-                        // If we have only one option, we choose it as next node
-                        if self.current_outgoing.len() == 1 {
-                            // Advancing towards self.current_outgoing[0]
-                            self.next = self.current_outgoing[0];
-                            self.algo_state = FluerryState::Advancing;
-                        } else {
-                            // For multiple options, pick one that's not a bridge if possible
-                             self.current_idx = 0;
-                            self.algo_state = FluerryState::ChoosingNext;
-                        }
-                    }
-                }
-            }
-            FluerryState::ChoosingNext => {           
-                // For multiple options, pick one that's not a bridge if possible
-                if self.current_idx >= self.current_outgoing.len() {
-                    self.algo_state = FluerryState::Failed;
-                    return;
-                }
-
-                self.graph.node_weight_mut(self.current_outgoing[self.current_idx]).unwrap().highlight_possibility();
-
-                if !self.is_bridge(self.current_node.unwrap(), self.current_outgoing[self.current_idx]) {
-                    self.next = self.current_outgoing[self.current_idx];
-                    self.algo_state = FluerryState::Advancing;
-                }
-
-                self.current_idx += 1;
-            }
-            FluerryState::Advancing => {
-                self.graph.node_weight_mut(self.next).unwrap().highlight_solution();
-
-                // Remove the edge and move
-                if let Some(edge_id) = self.graph_clone.find_edge(self.current_node.unwrap(), next) {
-                    self.graph_clone.remove_edge(edge_id);
-                    self.graph.edge_weight_mut(edge_id).unwrap().highlight_solution();
-                }
-                self.current_node = Some(self.next);
-            }
-
-            FluerryState::Failed => {}
         }
-    }
-
-    pub fn solve_flurry(&self) -> Option<Vec<NodeIndex>> {
-        // cloned graph
-        let mut graph = self.graph.clone();
-
-        // Find start node (any node with outgoing edges)
-        let mut current = graph.node_indices()
-            .find(|&node| graph.edges_directed(node, Direction::Outgoing).count() > 0)
-            .unwrap_or_else(|| graph.node_indices().next().unwrap_or(NodeIndex::new(0)));
-
-        let mut circuit = Vec::new();
-        circuit.push(current);
-
-        // Use a stack to avoid recursion limits in large graphs
-        let mut stack = Vec::new();
         
-        while !stack.is_empty() || graph.edges_directed(current, Direction::Outgoing).count() > 0 {
-            if graph.edges_directed(current, Direction::Outgoing).count() == 0 {
-                // Backtrack
-                current = stack.pop().unwrap();
-                circuit.push(current);
+        //self.update_highlights();
+        println!("Step: {} - {}", format!("{:?}", cur_state), self.step_explanation);
+    }
+
+    fn initialize_algorithm(&mut self) {
+        self.reset_algorithm();
+        self.step_explanation = "Initializing algorithm - cloned graph and cleared state".to_string();
+    }
+
+    fn find_start_node(&mut self) {
+        // Find a node with outgoing edges (for Eulerian path)
+        // For Eulerian circuit, we can start anywhere with edges
+        self.current_node = self.graph_clone.node_indices()
+            .find(|&node| self.graph_clone.edges_directed(node, Direction::Outgoing).count() > 0);
+            
+        if let Some(start_node) = self.current_node {
+            self.circuit.push(start_node);
+            self.algo_state = FluerryState::CheckingOutgoing;
+            self.step_explanation = format!("Starting from node {:?}", start_node);
+        } else {
+            self.algo_state = FluerryState::Completed;
+            self.step_explanation = "No suitable start node found - graph may be empty".to_string();
+        }
+    }
+
+    fn check_outgoing_edges(&mut self) {
+        let current = match self.current_node {
+            Some(node) => node,
+            None => {
+                self.algo_state = FluerryState::Failed;
+                self.step_explanation = "No current node - algorithm failed".to_string();
+                return;
+            }
+        };
+
+       self.graph.node_weight_mut(current).unwrap().highlight_current();
+
+        // Check if we're done
+        if self.stack.is_empty() && self.graph_clone.edges_directed(current, Direction::Outgoing).count() == 0 {
+            // Check if all edges are used
+            if self.graph_clone.edge_count() == 0 {
+                self.algo_state = FluerryState::Completed;
+                self.step_explanation = "Algorithm completed - Eulerian circuit found".to_string();
             } else {
-                // Move forward
-                // Pushing current to stack
-                stack.push(current);
-                
-                // Get all indexes of outgoing edges of current
-                let edges: Vec<NodeIndex> = graph
-                    .edges_directed(current, Direction::Outgoing)
-                    .map(|edge| edge.target())
-                    .collect();
+                self.algo_state = FluerryState::Failed;
+                self.step_explanation = "Algorithm failed - unused edges remain but no path forward".to_string();
+            }
+            return;
+        }
 
-                // Choose next node
-                let next;
-                
-                // If we have only one option, we choose it as next node
-                if edges.len() == 1 {
-                    next = edges[0]
-                } else {
-                    // For multiple options, pick one that's not a bridge if possible
-                    next = edges.iter()
-                        .find(|&&neighbor| 
-                            // check for bridge
-                            !self.is_bridge(current, neighbor))
-                        .copied()
-                        .unwrap_or(edges[0])
-                };
+        // Get current outgoing edges with their edge IDs
+        self.current_outgoing = self.graph_clone
+            .edges_directed(current, Direction::Outgoing)
+            .map(|edge| (edge.target(), edge.id()))
+            .collect();
 
-                // Remove the edge and move
-                if let Some(edge_id) = graph.find_edge(current, next) {
-                    graph.remove_edge(edge_id);
-                }
-                current = next;
+        if self.current_outgoing.is_empty() {
+            // No outgoing edges - need to backtrack
+            self.algo_state = FluerryState::Backtracking;
+            self.step_explanation = "No outgoing edges available - backtracking".to_string();
+        } else if self.current_outgoing.len() == 1 {
+            // Only one choice - take it
+            self.next_candidate = Some(self.current_outgoing[0].0);
+            self.algo_state = FluerryState::Advancing;
+            self.step_explanation = "Only one outgoing edge - taking it".to_string();
+        } else {
+            // Multiple choices - need to choose non-bridge if possible
+            self.current_idx = 0;
+            self.algo_state = FluerryState::ChoosingNext;
+            self.step_explanation = format!("Multiple outgoing edges ({}) - checking for non-bridge", self.current_outgoing.len());
+        }
+    }
+
+    fn choose_next_edge(&mut self) {
+        let current = match self.current_node {
+            Some(node) => node,
+            None => {
+                self.algo_state = FluerryState::Failed;
+                return;
+            }
+        };
+
+        if self.current_idx >= self.current_outgoing.len() {
+            // No non-bridge found, use first edge
+            self.next_candidate = Some(self.current_outgoing[0].0);
+            self.algo_state = FluerryState::Advancing;
+            self.step_explanation = "No non-bridge edge found - using first available".to_string();
+            return;
+        }
+
+        let (candidate_node, edge_id) = self.current_outgoing[self.current_idx];
+        
+        // Highlight current candidate
+        self.graph.node_weight_mut(candidate_node).unwrap().highlight_possibility();
+        
+            if self.is_bridge(current, candidate_node) {
+                self.graph.edge_weight_mut(edge_id).unwrap().highlight_bridge();
+                self.step_explanation = format!("Edge to {:?} is a bridge - skipping", candidate_node);
+            } else {
+                self.graph.edge_weight_mut(edge_id).unwrap().highlight_current();
+                self.next_candidate = Some(candidate_node);
+                self.algo_state = FluerryState::Advancing;
+                self.step_explanation = format!("Found non-bridge edge to {:?}", candidate_node);
+                return;
+            }
+
+        self.current_idx += 1;
+        
+        if self.current_idx < self.current_outgoing.len() {
+            self.step_explanation = format!("Checking next candidate ({}/{})", 
+                self.current_idx + 1, self.current_outgoing.len());
+        }
+    }
+
+    fn advance_to_next(&mut self) {
+        let current = match self.current_node {
+            Some(node) => node,
+            None => {
+                self.algo_state = FluerryState::Failed;
+                return;
+            }
+        };
+
+        let next = match self.next_candidate {
+            Some(node) => node,
+            None => {
+                self.algo_state = FluerryState::Failed;
+                return;
+            }
+        };
+
+        // Find and remove the edge
+        if let Some(edge_id) = self.graph_clone.find_edge(current, next) {
+            self.graph_clone.remove_edge(edge_id);
+            self.visited_edges.push(edge_id);
+            
+            // Update original graph for visualization
+            if let Some(edge_weight) = self.graph.edge_weight_mut(edge_id) {
+                edge_weight.highlight_solution();
             }
         }
 
-        Some(circuit)
+        // Move to next node
+        self.stack.push(current);
+        if let Some(cur_weight) = self.graph.node_weight_mut(self.current_node.unwrap()) {
+                cur_weight.highlight_solution();
+        }
+        self.current_node = Some(next);
+        self.circuit.push(next);
+        
+        self.current_outgoing.clear();
+        self.next_candidate = None;
+        self.algo_state = FluerryState::CheckingOutgoing;
+        
+        self.step_explanation = format!("Moved from {:?} to {:?}", current, next);
+    }
+
+    fn backtrack(&mut self) {
+        if let Some(prev_node) = self.stack.pop() {
+            self.current_node = Some(prev_node);
+            self.circuit.push(prev_node);
+            self.algo_state = FluerryState::CheckingOutgoing;
+            self.step_explanation = format!("Backtracked to node {:?}", prev_node);
+        } else {
+            self.algo_state = FluerryState::Failed;
+            self.step_explanation = "Cannot backtrack - stack is empty".to_string();
+        }
+    }
+
+    fn clear_highlights(&mut self) {
+        for node in self.graph.node_weights_mut() {
+            node.reset_highlight();
+        }
+        for edge in self.graph.edge_weights_mut() {
+            edge.reset_highlight();
+        }
     }
 
 
+    pub fn reset_algorithm(&mut self) {
+        self.graph_clone = self.graph.clone();
+        self.algo_state = FluerryState::Initializing;
+        self.stack.clear();
+        self.circuit.clear();
+        self.current_node = None;
+        self.current_outgoing.clear();
+        self.current_idx = 0;
+        self.next_candidate = None;
+        self.visited_edges.clear();
+        self.step_explanation.clear();
+        self.clear_highlights();
+    }
+
+    // Improved bridge detection
     fn is_bridge(&self, u: NodeIndex, v: NodeIndex) -> bool {
-        // Simple bridge detection: if removing u->v disconnects the graph
-        let mut temp_graph = self.graph.clone();
+        let mut temp_graph = self.graph_clone.clone();
         
         if let Some(edge_id) = temp_graph.find_edge(u, v) {
             temp_graph.remove_edge(edge_id);
             
-            // Check if v is still reachable from u in the undirected sense
-            let reachable = algo::dijkstra(&temp_graph, u, Some(v), |_| 1);
-            !reachable.contains_key(&v)
+            // Count reachable nodes from u in the original graph
+            let original_reachable = petgraph::algo::dijkstra(&self.graph_clone, u, None, |_| 1);
+            let after_remove_reachable = petgraph::algo::dijkstra(&temp_graph, u, None, |_| 1);
+            
+            // If the number of reachable nodes decreases, it's a bridge
+            original_reachable.len() != after_remove_reachable.len()
         } else {
             false
-        }
-    }
-
-
-    pub fn highlight_solution(&mut self, solution: Vec<NodeIndex>) {
-        println!("{:?}", self.graph);
-        
-        // highlight nodes
-        for idx in solution.clone() {
-            self.graph.node_weight_mut(idx).unwrap().highlight_solution();
-        }
-        
-        // highlight edges
-        for els in solution.iter().rev().collect::<Vec<&NodeIndex>>().windows(2) {
-            println!("{:?}", els);
-
-            let eidx = self.graph.find_edge(*els[0], *els[1]).unwrap();
-            self.graph.edge_weight_mut(eidx).unwrap().highlight_solution();
         }
     }
 }
