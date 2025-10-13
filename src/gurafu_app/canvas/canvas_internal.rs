@@ -1,12 +1,13 @@
-
-use iced::{mouse, widget::{canvas, }, Color, Point, Theme};
-use petgraph::{
-    graph::NodeIndex, prelude::StableGraph, visit::EdgeRef, Direction
-};
+use iced::{Color, Point, Theme, mouse, widget::canvas};
+use petgraph::{Direction, algo, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef};
 
 use crate::gurafu_app::{
     canvas::{
-        camera::Camera, canvas_internal::grid::Grid, drawable::{arrow::Arrow, circle::Circle}, helpers, CanvasMessage
+        CanvasMessage,
+        camera::Camera,
+        canvas_internal::grid::Grid,
+        drawable::{arrow::Arrow, circle::Circle},
+        helpers,
     },
     toolbar::ToolbarOptions,
 };
@@ -36,7 +37,7 @@ pub struct CanvasStateInternal {
     circuit: Vec<NodeIndex>,
     current_node: Option<NodeIndex>,
     graph_clone: StableGraph<Circle, Arrow>,
-    
+
     // Step visualization state
     current_outgoing: Vec<(NodeIndex, petgraph::graph::EdgeIndex)>,
     current_idx: usize,
@@ -104,7 +105,7 @@ impl CanvasStateInternal {
                 line_width: 10.0,
                 arrowhead_size: 30.0,
                 offset: 0.0,
-                color: Color::WHITE
+                color: Color::WHITE,
             });
         }
         None
@@ -245,13 +246,13 @@ impl CanvasStateInternal {
         }
     }
 
-    fn create_new_node_on_grid(&mut self, screen: Point,) {
+    fn create_new_node_on_grid(&mut self, screen: Point) {
         let grid_pos = self.grid.to_grid(self.camera.screen_to_world(screen));
 
         let object = Circle {
             center: grid_pos,
             radius: 30_f32,
-            color: Theme::Dark.palette().primary
+            color: Theme::Dark.palette().primary,
         };
 
         match self.grid.get_object_in_world(grid_pos) {
@@ -325,14 +326,14 @@ impl CanvasStateInternal {
                     line_width: 5.0,
                     arrowhead_size: 10.0,
                     offset: 30.0,
-                    color: Color::WHITE
+                    color: Color::WHITE,
                 },
             );
         }
 
         self.is_connecting = false;
     }
- pub fn step_algorithm(&mut self) {
+    pub fn step_algorithm(&mut self) {
         let cur_state = self.algo_state;
 
         match self.algo_state {
@@ -347,22 +348,31 @@ impl CanvasStateInternal {
                 self.step_explanation = "Algorithm completed".to_string();
             }
         }
-        
+
         //self.update_highlights();
-        println!("Step: {} - {}", format!("{:?}", cur_state), self.step_explanation);
+        println!(
+            "Step: {} - {}",
+            format!("{:?}", cur_state),
+            self.step_explanation
+        );
     }
 
     fn initialize_algorithm(&mut self) {
         self.reset_algorithm();
-        self.step_explanation = "Initializing algorithm - cloned graph and cleared state".to_string();
+        self.step_explanation =
+            "Initializing algorithm - cloned graph and cleared state".to_string();
     }
 
     fn find_start_node(&mut self) {
         // Find a node with outgoing edges (for Eulerian path)
         // For Eulerian circuit, we can start anywhere with edges
-        self.current_node = self.graph_clone.node_indices()
-            .find(|&node| self.graph_clone.edges_directed(node, Direction::Outgoing).count() > 0);
-            
+        self.current_node = self.graph_clone.node_indices().find(|&node| {
+            self.graph_clone
+                .edges_directed(node, Direction::Outgoing)
+                .count()
+                > 0
+        });
+
         if let Some(start_node) = self.current_node {
             self.circuit.push(start_node);
             self.algo_state = FluerryState::CheckingOutgoing;
@@ -383,23 +393,34 @@ impl CanvasStateInternal {
             }
         };
 
-       self.graph.node_weight_mut(current).unwrap().highlight_current();
+        self.graph
+            .node_weight_mut(current)
+            .unwrap()
+            .highlight_current();
 
         // Check if we're done
-        if self.stack.is_empty() && self.graph_clone.edges_directed(current, Direction::Outgoing).count() == 0 {
+        if self.stack.is_empty()
+            && self
+                .graph_clone
+                .edges_directed(current, Direction::Outgoing)
+                .count()
+                == 0
+        {
             // Check if all edges are used
             if self.graph_clone.edge_count() == 0 {
                 self.algo_state = FluerryState::Completed;
                 self.step_explanation = "Algorithm completed - Eulerian circuit found".to_string();
             } else {
                 self.algo_state = FluerryState::Failed;
-                self.step_explanation = "Algorithm failed - unused edges remain but no path forward".to_string();
+                self.step_explanation =
+                    "Algorithm failed - unused edges remain but no path forward".to_string();
             }
             return;
         }
 
         // Get current outgoing edges with their edge IDs
-        self.current_outgoing = self.graph_clone
+        self.current_outgoing = self
+            .graph_clone
             .edges_directed(current, Direction::Outgoing)
             .map(|edge| (edge.target(), edge.id()))
             .collect();
@@ -417,7 +438,10 @@ impl CanvasStateInternal {
             // Multiple choices - need to choose non-bridge if possible
             self.current_idx = 0;
             self.algo_state = FluerryState::ChoosingNext;
-            self.step_explanation = format!("Multiple outgoing edges ({}) - checking for non-bridge", self.current_outgoing.len());
+            self.step_explanation = format!(
+                "Multiple outgoing edges ({}) - checking for non-bridge",
+                self.current_outgoing.len()
+            );
         }
     }
 
@@ -439,27 +463,39 @@ impl CanvasStateInternal {
         }
 
         let (candidate_node, edge_id) = self.current_outgoing[self.current_idx];
-        
-        // Highlight current candidate
-        self.graph.node_weight_mut(candidate_node).unwrap().highlight_possibility();
-        
-            if self.is_bridge(current, candidate_node) {
-                self.graph.edge_weight_mut(edge_id).unwrap().highlight_bridge();
-                self.step_explanation = format!("Edge to {:?} is a bridge - skipping", candidate_node);
-            } else {
-                self.graph.edge_weight_mut(edge_id).unwrap().highlight_current();
-                self.next_candidate = Some(candidate_node);
-                self.algo_state = FluerryState::Advancing;
-                self.step_explanation = format!("Found non-bridge edge to {:?}", candidate_node);
-                return;
-            }
 
-        self.current_idx += 1;
-        
-        if self.current_idx < self.current_outgoing.len() {
-            self.step_explanation = format!("Checking next candidate ({}/{})", 
-                self.current_idx + 1, self.current_outgoing.len());
+        // Highlight current candidate
+        self.graph
+            .node_weight_mut(candidate_node)
+            .unwrap()
+            .highlight_possibility();
+
+        println!("{}", self.is_bridge(current, candidate_node));
+        if self.is_bridge(current, candidate_node) {
+            self.graph
+                .edge_weight_mut(edge_id)
+                .unwrap()
+                .highlight_bridge();
+            self.step_explanation = format!("Edge to {:?} is a bridge - skipping", candidate_node);
+        } else {
+            self.graph
+                .edge_weight_mut(edge_id)
+                .unwrap()
+                .highlight_current();
+            self.next_candidate = Some(candidate_node);
+            self.algo_state = FluerryState::Advancing;
+            self.step_explanation = format!("Found non-bridge edge to {:?}", candidate_node);
+            return;
         }
+
+        if self.current_idx < self.current_outgoing.len() {
+            self.step_explanation = format!(
+                "Checking next candidate ({}/{})",
+                self.current_idx + 1,
+                self.current_outgoing.len()
+            );
+        }
+        self.current_idx += 1;
     }
 
     fn advance_to_next(&mut self) {
@@ -483,7 +519,7 @@ impl CanvasStateInternal {
         if let Some(edge_id) = self.graph_clone.find_edge(current, next) {
             self.graph_clone.remove_edge(edge_id);
             self.visited_edges.push(edge_id);
-            
+
             // Update original graph for visualization
             if let Some(edge_weight) = self.graph.edge_weight_mut(edge_id) {
                 edge_weight.highlight_solution();
@@ -493,15 +529,15 @@ impl CanvasStateInternal {
         // Move to next node
         self.stack.push(current);
         if let Some(cur_weight) = self.graph.node_weight_mut(self.current_node.unwrap()) {
-                cur_weight.highlight_solution();
+            cur_weight.highlight_solution();
         }
         self.current_node = Some(next);
         self.circuit.push(next);
-        
+
         self.current_outgoing.clear();
         self.next_candidate = None;
         self.algo_state = FluerryState::CheckingOutgoing;
-        
+
         self.step_explanation = format!("Moved from {:?} to {:?}", current, next);
     }
 
@@ -526,7 +562,6 @@ impl CanvasStateInternal {
         }
     }
 
-
     pub fn reset_algorithm(&mut self) {
         self.graph_clone = self.graph.clone();
         self.algo_state = FluerryState::Initializing;
@@ -541,17 +576,16 @@ impl CanvasStateInternal {
         self.clear_highlights();
     }
 
-    // Improved bridge detection
     fn is_bridge(&self, u: NodeIndex, v: NodeIndex) -> bool {
         let mut temp_graph = self.graph_clone.clone();
-        
+
         if let Some(edge_id) = temp_graph.find_edge(u, v) {
             temp_graph.remove_edge(edge_id);
-            
+
             // Count reachable nodes from u in the original graph
             let original_reachable = petgraph::algo::dijkstra(&self.graph_clone, u, None, |_| 1);
             let after_remove_reachable = petgraph::algo::dijkstra(&temp_graph, u, None, |_| 1);
-            
+
             // If the number of reachable nodes decreases, it's a bridge
             original_reachable.len() != after_remove_reachable.len()
         } else {
