@@ -1,4 +1,8 @@
-use iced::{Settings, widget::pane_grid};
+
+use iced::time::{self, Duration};
+
+
+use iced::{widget::pane_grid, Settings, Subscription};
 
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
 
@@ -31,6 +35,8 @@ enum GurafuMessage {
     Canvas(canvas::CanvasMessage),
     Toolbar(toolbar::ToolbarMessage),
     Player(player::PlayerMessage),
+
+    AlgorithmTick,
 }
 
 pub fn run() -> iced::Result {
@@ -40,6 +46,7 @@ pub fn run() -> iced::Result {
             antialiasing: true,
             ..Settings::default()
         })
+        .subscription(GurafuApplication::subscription)
         .run()
 }
 
@@ -84,17 +91,16 @@ impl GurafuApplication {
             }
             GurafuMessage::File(_) => {}
             GurafuMessage::Canvas(message) => match message {
-                CanvasMessage::SolveFlueryResponce(resp) => {
-                    match resp {
-                        Some(vec) => {
-                            println!("the Euler's circuit is: {:?}", vec)
-                        }
-                        None => {
-                            println!("there is no Euler's circuit in following graph")
-                        }
-                    };
-
+                CanvasMessage::SolveFlueryResponce => {
                     state.canvas.solving_required = false;
+                    //match resp {
+                    //    Some(vec) => {
+                    //        println!("the Euler's circuit is: {:?}", vec)
+                    //    }
+                    //    None => {
+                    //        println!("there is no Euler's circuit in following graph")
+                    //    }
+                    //};
                 }
             },
             GurafuMessage::Toolbar(message) => match message {
@@ -106,10 +112,21 @@ impl GurafuApplication {
             GurafuMessage::Player(message) => match message {
                 PlayerMessage::PlayPause => {
                     state.player.playing = !state.player.playing;
-                    state.canvas.solving_required = true;
+                    //state.canvas.solving_required = true;
                 }
                 _ => {}
             },
+            GurafuMessage::AlgorithmTick => {
+                state.canvas.solving_required = true;
+            }
+        }
+    }
+
+    fn subscription(state: &GurafuApplication) -> Subscription<GurafuMessage> {
+        if state.player.playing {
+            time::every(Duration::from_secs(1)).map(|_| GurafuMessage::AlgorithmTick)
+        } else {
+            Subscription::none()
         }
     }
 

@@ -18,6 +18,10 @@ impl Circle {
     pub fn highlight_solution(&mut self) {
         self.color = Theme::Dark.palette().success;
     }
+
+    pub fn highlight_possibility(&mut self) {
+        self.color = Theme::Dark.extended_palette().danger.weak.color;
+    }
 }
 
 impl fmt::Debug for Circle {

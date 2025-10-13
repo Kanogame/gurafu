@@ -23,7 +23,8 @@ pub struct CanvasState {
 
 #[derive(Debug, Clone)]
 pub enum CanvasMessage {
-    SolveFlueryResponce(Option<Vec<usize>>),
+    //SolveFlueryResponce(Option<Vec<usize>>),
+    SolveFlueryResponce,
 }
 
 impl canvas::Program<CanvasMessage> for CanvasState {
@@ -40,25 +41,32 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         let pos = cursor.position_in(bounds);
 
         if self.solving_required {
-            let resp = state.solve_flurry();
-
-            // highlight
-
-            if resp.is_some() {
-                state.highlight_solution(resp.clone().unwrap());
-            }
+            state.step_algorithm();
 
             return (
                 canvas::event::Status::Captured,
-                Some(CanvasMessage::SolveFlueryResponce(match resp.clone() {
-                    Some(nvec) => Some(
-                        nvec.iter()
-                            .map(|node_index| node_index.index())
-                            .collect::<Vec<usize>>(),
-                    ),
-                    None => None,
-                })),
+                Some(CanvasMessage::SolveFlueryResponce)
             );
+
+            //let resp = state.solve_flurry();
+//
+            //// highlight
+//
+            //if resp.is_some() {
+            //    state.highlight_solution(resp.clone().unwrap());
+            //}
+//
+            //return (
+            //    canvas::event::Status::Captured,
+            //    Some(CanvasMessage::SolveFlueryResponce(match resp.clone() {
+            //        Some(nvec) => Some(
+            //            nvec.iter()
+            //                .map(|node_index| node_index.index())
+            //                .collect::<Vec<usize>>(),
+            //        ),
+            //        None => None,
+            //    })),
+            //);
         }
 
         if pos.is_none() {
