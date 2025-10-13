@@ -30,11 +30,15 @@ pub struct CanvasStateInternal {
     pub graph: StableGraph<Circle, Arrow>,
 
     // algo
-    current_outgoing: Vec<(NodeIndex, petgraph::graph::EdgeIndex)>,
+    algo_state: FluerryState,
+    stack: Vec<NodeIndex>,
+    circuit: Vec<NodeIndex>,
+    current_node: Option<NodeIndex>,
+    graph_clone: StableGraph<Circle, Arrow>,
+
+    current_outgoing: Vec<NodeIndex>,
     current_idx: usize,
-    next_candidate: Option<NodeIndex>,
-    visited_edges: Vec<petgraph::graph::EdgeIndex>,
-    step_explanation: String,
+    next: NodeIndex,
 }
 
 #[derive(Debug)]
