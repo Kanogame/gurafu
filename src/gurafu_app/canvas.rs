@@ -56,6 +56,8 @@ pub enum CanvasMessage {
 
     // connect elements
     HandleConnection(Point),
+
+    AlgorithmFinished(bool),
 }
 
 impl canvas::Program<CanvasMessage> for CanvasState {
@@ -309,8 +311,8 @@ impl CanvasState {
         widget::canvas(state).into()
     }
 
-    pub fn step_algorithm(&mut self) {
-        self.algo.step_algorithm(&mut self.graph);
+    pub fn step_algorithm(&mut self) -> Option<CanvasMessage> {
+        return self.algo.step_algorithm(&mut self.graph);
     }
 
     pub fn reset_algorithm(&mut self) {

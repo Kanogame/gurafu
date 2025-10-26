@@ -1,5 +1,6 @@
 use iced::time::{self};
 
+use iced::widget::text;
 use iced::{Settings, Subscription, widget::pane_grid};
 
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
@@ -16,6 +17,9 @@ pub struct GurafuApplication {
     canvas: canvas::CanvasState,
     toolbar: toolbar::ToolbarState,
     player: player::PlayerState,
+
+    show_completed_modal: bool,
+    completion_successed: bool,
 }
 
 #[derive(Debug)]
@@ -79,6 +83,9 @@ impl GurafuApplication {
             canvas: canvas::CanvasState::new(),
             toolbar: toolbar::ToolbarState::new(),
             player: player::PlayerState::new(),
+
+            show_completed_modal: false,
+            completion_successed: false,
         }
     }
 
@@ -98,6 +105,7 @@ impl GurafuApplication {
                 CanvasMessage::HandleConnection(world) => {
                     state.canvas.handle_connection(world);
                 }
+                _ => {}
             },
             GurafuMessage::Toolbar(message) => match message {
                 ToolbarMessage::ChosenState(new_state) => {
@@ -113,16 +121,30 @@ impl GurafuApplication {
                     state.canvas.reset_algorithm();
                     state.player.playing = false;
                 }
-                PlayerMessage::NextStep => {
-                    state.canvas.step_algorithm();
-                }
+                PlayerMessage::NextStep => match state.canvas.step_algorithm() {
+                    Some(mes) => match mes {
+                        CanvasMessage::AlgorithmFinished(res) => {
+                            state.show_completed_modal = true;
+                            state.completion_successed = res;
+                        }
+                        _ => {}
+                    },
+                    _ => {}
+                },
                 PlayerMessage::SliderValueChanged(val) => {
                     state.player.set_slider_value(val);
                 }
             },
-            GurafuMessage::AlgorithmTick => {
-                state.canvas.step_algorithm();
-            }
+            GurafuMessage::AlgorithmTick => match state.canvas.step_algorithm() {
+                Some(mes) => match mes {
+                    CanvasMessage::AlgorithmFinished(res) => {
+                        state.show_completed_modal = true;
+                        state.completion_successed = res;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            },
         }
     }
 
@@ -135,26 +157,34 @@ impl GurafuApplication {
     }
 
     fn view(state: &GurafuApplication) -> iced::Element<'_, GurafuMessage> {
-        pane_grid(&state.panes, |_, pane_state, _| match pane_state {
-            Pane::File => pane_grid::Content::new({
-                file::FileState::view(&state.file).map(GurafuMessage::File)
+        if state.show_completed_modal {
+            if state.completion_successed {
+                text("Выполнение алгоритма завершилось успешно").into()
+            } else {
+                text("Выполнение алгоритма завершилось с ошибкой").into()
+            }
+        } else {
+            pane_grid(&state.panes, |_, pane_state, _| match pane_state {
+                Pane::File => pane_grid::Content::new({
+                    file::FileState::view(&state.file).map(GurafuMessage::File)
+                })
+                .style(styles::pane_grid_style),
+                Pane::Canvas => pane_grid::Content::new({
+                    canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
+                })
+                .style(styles::pane_grid_style),
+                Pane::Player => pane_grid::Content::new({
+                    player::PlayerState::view(&state.player).map(GurafuMessage::Player)
+                })
+                .style(styles::pane_grid_style),
+                Pane::Toolbar => pane_grid::Content::new({
+                    toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
+                })
+                .style(styles::pane_grid_style),
             })
-            .style(styles::pane_grid_style),
-            Pane::Canvas => pane_grid::Content::new({
-                canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
-            })
-            .style(styles::pane_grid_style),
-            Pane::Player => pane_grid::Content::new({
-                player::PlayerState::view(&state.player).map(GurafuMessage::Player)
-            })
-            .style(styles::pane_grid_style),
-            Pane::Toolbar => pane_grid::Content::new({
-                toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
-            })
-            .style(styles::pane_grid_style),
-        })
-        .on_resize(10, GurafuMessage::PaneResized)
-        .into()
+            .on_resize(10, GurafuMessage::PaneResized)
+            .into()
+        }
     }
 
     fn theme(&self) -> iced::Theme {

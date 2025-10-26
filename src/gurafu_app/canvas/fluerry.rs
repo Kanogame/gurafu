@@ -1,7 +1,10 @@
 use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef};
 use std::collections::{HashSet, VecDeque};
 
-use crate::gurafu_app::canvas::drawable::{arrow::Arrow, circle::Circle};
+use crate::gurafu_app::canvas::{
+    CanvasMessage,
+    drawable::{arrow::Arrow, circle::Circle},
+};
 
 pub struct FluerryState {
     // Algorithm state
@@ -57,7 +60,10 @@ impl FluerryState {
         self.algo_step = FluerryStep::NotStarted
     }
 
-    pub fn step_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    pub fn step_algorithm(
+        &mut self,
+        graph: &mut StableGraph<Circle, Arrow>,
+    ) -> Option<CanvasMessage> {
         let cur_state = self.algo_step;
 
         match self.algo_step {
@@ -67,9 +73,15 @@ impl FluerryState {
             FluerryStep::ChoosingNext => self.choose_next_edge(graph),
             FluerryStep::Advancing => self.advance_to_next(graph),
             FluerryStep::Backtracking => self.backtrack_all(graph),
-            FluerryStep::Completed | FluerryStep::Failed => {
+            FluerryStep::Completed => {
                 // Algorithm finished, do nothing
                 self.step_explanation = "Algorithm completed".to_string();
+                return Some(CanvasMessage::AlgorithmFinished(true));
+            }
+            FluerryStep::Failed => {
+                // Algorithm finished, do nothing
+                self.step_explanation = "Algorithm completed".to_string();
+                return Some(CanvasMessage::AlgorithmFinished(false));
             }
         }
 
@@ -79,6 +91,8 @@ impl FluerryState {
             format!("{:?}", cur_state),
             self.step_explanation
         );
+
+        return None;
     }
 
     fn initialize_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
