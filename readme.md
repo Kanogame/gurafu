@@ -9,23 +9,15 @@ It can:
 6. Display algorithms step-by-step 
 
 roadmap:
-4. Add timeline+highliting
-    +/- create step-based algo - needs refactoring
-    + add auto-stepper
-    - add stepper
-    - time chooser for stepper
-    - add "to end" functionality
-    - reset algo
-    - better highlighting for algo
+5. UI rework
     - add messageboxes (or and notifs) about algo status - "euler path found"
+    - add Ids to nodes
+    - add text helpers
 
-5. add import/export via file
+6. add import/export via file
     - add json serialization/deserialization
     - save/open json files
 
-6. UI rework
-    - add Ids to nodes
-    - add text helpers
 7. Refactor
 8. Bench & optimizations
 9. Release
