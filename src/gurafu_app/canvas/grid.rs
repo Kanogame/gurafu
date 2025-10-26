@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use iced::{Point, Size, widget::canvas};
+use iced::Point;
 use petgraph::graph::NodeIndex;
 
-use crate::gurafu_app::canvas::camera::Camera;
 
 #[derive(Clone)]
 pub struct Grid {

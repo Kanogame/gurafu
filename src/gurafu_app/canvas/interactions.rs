@@ -1,11 +1,9 @@
-use iced::{Color, Point, Size, Theme, mouse, widget::canvas};
-use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef};
+use iced::{Point, Size, mouse, widget::canvas};
 
 use crate::gurafu_app::{
     canvas::{
         CanvasMessage,
         camera::Camera,
-        drawable::{arrow::Arrow, circle::Circle},
         grid::Grid,
         helpers,
     },

@@ -2,9 +2,8 @@ use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef
 
 use crate::gurafu_app::canvas::drawable::{arrow::Arrow, circle::Circle};
 
-struct FluerryState {
+pub struct FluerryState {
     // Algorithm state
-    pub step_solved: bool,
     algo_step: FluerryStep,
     stack: Vec<NodeIndex>,
     circuit: Vec<NodeIndex>,
@@ -32,9 +31,8 @@ enum FluerryStep {
 }
 
 impl FluerryState {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            step_solved: false,
             algo_step: FluerryStep::NotStarted,
             stack: Vec::new(),
             circuit: Vec::new(),
@@ -46,10 +44,6 @@ impl FluerryState {
             visited_edges: Vec::new(),
             step_explanation: String::new(),
         }
-    }
-
-    fn default() -> Self {
-        FluerryState::new()
     }
 
     pub fn restart_algoritm(&mut self) {

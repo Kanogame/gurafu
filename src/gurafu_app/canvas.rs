@@ -1,23 +1,21 @@
 use iced::{
-    Color, Event, Point, Rectangle, Renderer, Theme, Vector,
+    Color, Point, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
     widget::{
         self,
-        canvas::{self, Cache},
+        canvas::{self},
     },
-    window,
 };
 use petgraph::{
-    Direction,
-    graph::NodeIndex,
     prelude::StableGraph,
-    visit::{EdgeRef, IntoEdgeReferences, IntoNodeReferences},
+    visit::{IntoEdgeReferences, IntoNodeReferences},
 };
 
 use crate::gurafu_app::{
     canvas::{
         canvas_frame::CanvasFrame,
         drawable::{Drawable, arrow::Arrow, circle::Circle},
+        fluerry::FluerryState,
         grid::Grid,
     },
     toolbar::ToolbarOptions,
@@ -32,13 +30,14 @@ mod helpers;
 // just zoom, pan and interaction state
 mod interactions;
 
-#[derive(Clone)]
 pub struct CanvasState {
     pub toolbar_state: ToolbarOptions,
-    pub solving_required: bool,
     //canvas_cache: Cache,
     pub graph: StableGraph<Circle, Arrow>,
     pub grid: Grid,
+
+    // algo
+    algo: FluerryState,
 
     // connection
     is_connecting: bool,
@@ -189,9 +188,10 @@ impl CanvasState {
     pub fn new() -> Self {
         CanvasState {
             toolbar_state: ToolbarOptions::new(),
-            solving_required: false,
             graph: StableGraph::new(),
             grid: Grid::new(),
+
+            algo: FluerryState::new(),
 
             is_connecting: false,
             connection_start: Point { x: 0_f32, y: 0_f32 },
@@ -307,5 +307,13 @@ impl CanvasState {
 
     pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
         widget::canvas(state).into()
+    }
+
+    pub fn step_algorithm(&mut self) {
+        self.algo.step_algorithm(&mut self.graph);
+    }
+
+    pub fn reset_algorithm(&mut self) {
+        self.algo.restart_algoritm();
     }
 }

@@ -119,7 +119,6 @@ impl GurafuApplication {
                 PlayerMessage::SliderValueChanged(val) => {
                     state.player.set_slider_value(val);
                 }
-                _ => {}
             },
             GurafuMessage::AlgorithmTick => {
                 state.canvas.step_algorithm();
