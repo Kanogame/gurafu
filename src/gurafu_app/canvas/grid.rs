@@ -5,11 +5,9 @@ use petgraph::graph::NodeIndex;
 
 use crate::gurafu_app::canvas::camera::Camera;
 
+#[derive(Clone)]
 pub struct Grid {
-    step_size: f32,
-
-    points: Vec<canvas::Path>,
-
+    pub step_size: f32,
     objects: HashMap<GridPoint, NodeIndex>,
 }
 
@@ -36,53 +34,7 @@ impl Grid {
         Grid {
             step_size: 100_f32,
             objects: HashMap::new(),
-            points: Vec::new(),
         }
-    }
-
-    //pub fn objects(&self) -> Iter<'_, GridPoint, NodeIndex> {
-    //    self.objects.iter()
-    //}
-
-    pub fn update_grid_points(&mut self, camera: &Camera, size: Size) {
-        // top left corner of screen in world cords
-        let camera_tl = camera.screen_to_world(Point { x: 0_f32, y: 0_f32 });
-        // bottom right corner of screen in world cords
-        let camera_br = camera.screen_to_world(Point {
-            x: size.width,
-            y: size.height,
-        });
-
-        let mut points: Vec<canvas::Path> = vec![];
-
-        let start_on_grid = self.to_grid_tl(camera_tl);
-        let end_on_grid = self.to_grid_tl(camera_br);
-
-        let mut x_offset = 0_f32;
-        let mut y_offset = 0_f32;
-
-        while start_on_grid.x + x_offset <= end_on_grid.x {
-            while start_on_grid.y + y_offset <= end_on_grid.y {
-                points.push(canvas::Path::circle(
-                    camera.world_to_screen(Point {
-                        x: start_on_grid.x + x_offset,
-                        y: start_on_grid.y + y_offset,
-                    }),
-                    5_f32 * (1_f32 / camera.scale),
-                ));
-
-                y_offset += self.step_size;
-            }
-
-            y_offset = 0_f32;
-            x_offset += self.step_size;
-        }
-
-        self.points = points;
-    }
-
-    pub fn get_grid_points(&self) -> &Vec<canvas::Path> {
-        &self.points
     }
 
     pub fn get_object_in_world(&self, world: Point) -> Option<&NodeIndex> {
@@ -90,7 +42,7 @@ impl Grid {
     }
 
     // clamps the point to top left point on grid
-    fn to_grid_tl(&self, world: Point) -> Point {
+    pub fn to_grid_tl(&self, world: Point) -> Point {
         Point {
             x: (world.x / self.step_size).floor() * self.step_size,
             y: (world.y / self.step_size).floor() * self.step_size,
