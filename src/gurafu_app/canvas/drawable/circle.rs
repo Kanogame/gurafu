@@ -1,11 +1,8 @@
 use core::fmt;
 
-use iced::{
-    widget::canvas::{Path}, Color, Point, Theme
-};
+use iced::{Color, Point, Theme, widget::canvas::Path};
 
 use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
-
 
 #[derive(Clone)]
 pub struct Circle {
@@ -15,18 +12,30 @@ pub struct Circle {
 }
 
 impl Circle {
+    pub fn highlight_start(&mut self) {
+        self.color = Color::from_rgb8(0, 255, 136);
+    }
+
+    pub fn highlight_exploring(&mut self) {
+        self.color = Color::from_rgb8(255, 215, 0)
+    }
+
+    pub fn highlight_candidate(&mut self) {
+        self.color = Color::from_rgb8(135, 206, 235)
+    }
+
+    pub fn highlight_next(&mut self) {
+        self.color = Color::from_rgb8(255, 140, 0)
+    }
+
+    pub fn highlight_visited(&mut self) {
+        self.color = Color::from_rgb8(136, 136, 136)
+    }
+
     pub fn highlight_solution(&mut self) {
-        self.color = Theme::Dark.palette().success;
+        self.color = Color::from_rgb8(0, 255, 0)
     }
 
-    pub fn highlight_possibility(&mut self) {
-        self.color = Theme::Dark.extended_palette().danger.strong.color;
-    }
-
-    pub fn highlight_current(&mut self) {
-        self.color = Theme::Dark.extended_palette().danger.base.color;
-    }
-    
     pub fn reset_highlight(&mut self) {
         self.color = Theme::Dark.palette().primary;
     }

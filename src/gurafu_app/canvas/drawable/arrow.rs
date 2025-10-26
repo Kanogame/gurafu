@@ -1,7 +1,8 @@
 use core::fmt;
 
 use iced::{
-    widget::canvas::{self, path::lyon_path::geom::Vector, Path}, Color, Point, Theme
+    Color, Point,
+    widget::canvas::{self, Path, path::lyon_path::geom::Vector},
 };
 
 use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
@@ -95,20 +96,19 @@ impl Drawable for Arrow {
 }
 
 impl Arrow {
-    pub fn highlight_solution(&mut self) {
-        self.color = Theme::Dark.palette().success;
-    }
-
-    pub fn highlight_current(&mut self) {
-        self.color = Theme::Dark.extended_palette().danger.weak.color;
+    pub fn highlight_selected(&mut self) {
+        self.color = Color::from_rgb8(0, 255, 255);
     }
 
     pub fn highlight_bridge(&mut self) {
-        self.color = Theme::Dark.extended_palette().danger.base.color;
+        self.color = Color::from_rgb8(255, 0, 0)
     }
-    
+
+    pub fn highlight_path(&mut self) {
+        self.color = Color::from_rgb8(144, 238, 144)
+    }
+
     pub fn reset_highlight(&mut self) {
         self.color = Color::WHITE;
     }
-
 }
