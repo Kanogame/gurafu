@@ -1,7 +1,6 @@
 use iced::{
-    Alignment,
-    Length::{Fill, Shrink},
-    widget::{Row, button, center, column, container, row, svg, text},
+    Length::Shrink,
+    widget::{Row, button, center, column, row, svg, text},
 };
 
 use crate::gurafu_app::styles;

@@ -1,12 +1,13 @@
 use iced::{
     Alignment,
     Length::Fill,
-    widget::{button, canvas::path::lyon_path::geom::euclid::Length, column, container, row, text},
+    widget::{button, column, container, row, text},
 };
 
 use crate::gurafu_app::styles::message_box_style;
 
 pub struct MessageBoxState {
+    pub header_text: String,
     pub message_text: String,
 }
 
@@ -18,6 +19,7 @@ pub enum MessageBoxMessage {
 impl MessageBoxState {
     pub fn new() -> Self {
         MessageBoxState {
+            header_text: String::new(),
             message_text: String::new(),
         }
     }
@@ -25,7 +27,7 @@ impl MessageBoxState {
     pub fn view(state: &MessageBoxState) -> iced::Element<'_, MessageBoxMessage> {
         container(
             column![
-                text("Результаты работы алгоритма").size(24),
+                text(state.header_text.clone()).size(24),
                 column![
                     text(state.message_text.clone()).size(16),
                     row![

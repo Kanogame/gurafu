@@ -10,7 +10,10 @@ pub struct FileState {
 }
 
 #[derive(Debug, Clone)]
-pub enum FileMessage {}
+pub enum FileMessage {
+    OpenFile,
+    SaveFile,
+}
 
 impl FileState {
     pub fn new() -> Self {
@@ -24,8 +27,10 @@ impl FileState {
                 ..Font::default()
             }),
             row![
-                button(svg("assets/icons/open.svg").style(styles::button_svg_style)), //.on_press(FileMessage::OpenFile),
-                button(svg("assets/icons/save.svg").style(styles::button_svg_style)), //.on_press(FileMessage::SaveFile),
+                button(svg("assets/icons/open.svg").style(styles::button_svg_style))
+                    .on_press(FileMessage::OpenFile),
+                button(svg("assets/icons/save.svg").style(styles::button_svg_style))
+                    .on_press(FileMessage::SaveFile),
             ]
             .spacing(20)
         ]

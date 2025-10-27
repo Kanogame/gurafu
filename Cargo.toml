@@ -7,3 +7,6 @@ edition = "2024"
 iced = {version = "0.13.1", features =["canvas", "svg", "tokio", "advanced"]}
 iced_highlighter = "0.13.0"
 petgraph = "0.8.2"
+rfd = "0.15.4"
+serde = "1.0.228"
+serde_json = "1.0.145"

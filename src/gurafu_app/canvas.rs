@@ -121,7 +121,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         &self,
         state: &Self::State,
         renderer: &Renderer,
-        theme: &Theme,
+        _theme: &Theme,
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry> {
@@ -133,7 +133,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
 
         // fill grid points (alignment helpers)
         for point in state.get_grid_points() {
-            frame.fill(point, theme.palette().success);
+            frame.fill(point, Color::from_rgb8(120, 120, 120));
         }
 
         let mut drawable_list: Vec<&dyn Drawable>;
@@ -157,12 +157,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
                 Some(arrow) => {
                     frame.fill(
                         &arrow.into_path(&state.camera),
-                        Color {
-                            r: 1.0,
-                            g: 1.0,
-                            b: 1.0,
-                            a: 1.0,
-                        },
+                        Color::from_rgb8(80, 80, 80),
                     );
                 }
                 None => {}
@@ -208,7 +203,7 @@ impl CanvasState {
                 line_width: 10.0,
                 arrowhead_size: 30.0,
                 offset: 0.0,
-                color: Color::WHITE,
+                color: Color::from_rgb8(80, 80, 80),
             });
         }
         None
@@ -220,7 +215,7 @@ impl CanvasState {
         let object = Circle {
             center: grid_pos,
             radius: 30_f32,
-            color: Theme::Dark.palette().primary,
+            color: Theme::Light.palette().primary,
         };
 
         match self.grid.get_object_in_world(grid_pos) {
@@ -291,7 +286,7 @@ impl CanvasState {
                     line_width: 5.0,
                     arrowhead_size: 10.0,
                     offset: 30.0,
-                    color: Color::WHITE,
+                    color: Color::from_rgb8(80, 80, 80),
                 },
             );
         }

@@ -44,7 +44,7 @@ impl PlayerState {
                 state.slider_value,
                 PlayerMessage::SliderValueChanged
             ),
-            text(state.slider_text.clone())
+            text(format!("Скорость: {}X", state.slider_text.clone()))
                 .size(16)
                 .font(Font {
                     weight: font::Weight::Bold,

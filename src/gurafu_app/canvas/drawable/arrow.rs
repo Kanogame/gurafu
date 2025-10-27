@@ -109,6 +109,6 @@ impl Arrow {
     }
 
     pub fn reset_highlight(&mut self) {
-        self.color = Color::WHITE;
+        self.color = Color::from_rgb8(80, 80, 80);
     }
 }

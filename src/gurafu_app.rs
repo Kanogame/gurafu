@@ -1,7 +1,11 @@
+use iced::Length::Fill;
 use iced::time::{self};
+use iced::widget::{button, column, row, svg, text};
+use iced::{Font, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
 
+use crate::gurafu_app::file::FileMessage;
 use crate::gurafu_app::message_box::MessageBoxMessage;
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
 
@@ -21,7 +25,7 @@ pub struct GurafuApplication {
     player: player::PlayerState,
     message_box: message_box::MessageBoxState,
 
-    show_modal: bool,
+    modal_content: ModalState,
 }
 
 #[derive(Debug)]
@@ -40,20 +44,32 @@ enum GurafuMessage {
     Toolbar(toolbar::ToolbarMessage),
     Player(player::PlayerMessage),
     MessageBox(message_box::MessageBoxMessage),
-    CloseModal,
 
+    //FileOpened(Result<C, String>),
+    CloseModal,
+    OpenInfo,
     AlgorithmTick,
 }
 
+enum ModalState {
+    Closed,
+    AlgorithmEnded,
+    About,
+}
+
 pub fn run() -> iced::Result {
-    iced::application("Gurafu", GurafuApplication::update, GurafuApplication::view)
-        .theme(GurafuApplication::theme)
-        .settings(Settings {
-            antialiasing: true,
-            ..Settings::default()
-        })
-        .subscription(GurafuApplication::subscription)
-        .run()
+    iced::application(
+        "Нахождение эйлерова цикла",
+        GurafuApplication::update,
+        GurafuApplication::view,
+    )
+    .theme(GurafuApplication::theme)
+    .settings(Settings {
+        antialiasing: true,
+        ..Settings::default()
+    })
+    .subscription(GurafuApplication::subscription)
+    .run()
 }
 
 impl Default for GurafuApplication {
@@ -89,7 +105,7 @@ impl GurafuApplication {
             player: player::PlayerState::new(),
             message_box: message_box::MessageBoxState::new(),
 
-            show_modal: false,
+            modal_content: ModalState::Closed,
         }
     }
 
@@ -98,7 +114,26 @@ impl GurafuApplication {
             GurafuMessage::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 state.panes.resize(split, ratio);
             }
-            GurafuMessage::File(_) => {}
+            GurafuMessage::File(message) => match message {
+                FileMessage::OpenFile => {
+                    //    let dialog = rdf::AsyncFileDialog::new()
+                    //        .add_filter("json", &["json"])
+                    //        .pick_file();
+                    //    Task::future(dialog)
+                    //        .and_then(|file| {
+                    //        Task::future(move |mut sender| {
+                    //        let content = std::fs::read_to_string(file.path())
+                    //            .unwrap_or_default();
+                    //        let result = serde_json::from_str::<CanvasSerializaion>(&content)
+                    //            .map_err(|e| e.to_string());
+                    //        let _ = sender.try_send(result);
+                    //    })
+                    //})
+                    //.map(GurafuMessage::FileOpened)
+                }
+                FileMessage::SaveFile => {}
+            },
+            //GurafuMessage::FileOpened(_) => {}
             GurafuMessage::Canvas(message) => match message {
                 CanvasMessage::CreateNodeOnGrid(world) => {
                     state.canvas.create_new_node_on_grid(world);
@@ -111,6 +146,9 @@ impl GurafuApplication {
                 }
                 _ => {}
             },
+            GurafuMessage::OpenInfo => {
+                state.open_modal_about();
+            }
             GurafuMessage::Toolbar(message) => match message {
                 ToolbarMessage::ChosenState(new_state) => {
                     state.toolbar.state = new_state.clone();
@@ -128,7 +166,7 @@ impl GurafuApplication {
                 PlayerMessage::NextStep => match state.canvas.step_algorithm() {
                     Some(mes) => match mes {
                         CanvasMessage::AlgorithmFinished(res) => {
-                            state.open_modal(res);
+                            state.open_modal_after_algo(res);
                         }
                         _ => {}
                     },
@@ -141,18 +179,18 @@ impl GurafuApplication {
             GurafuMessage::AlgorithmTick => match state.canvas.step_algorithm() {
                 Some(mes) => match mes {
                     CanvasMessage::AlgorithmFinished(res) => {
-                        state.open_modal(res);
+                        state.open_modal_after_algo(res);
                     }
                     _ => {}
                 },
                 _ => {}
             },
             GurafuMessage::CloseModal => {
-                state.show_modal = false;
+                state.modal_content = ModalState::Closed;
             }
             GurafuMessage::MessageBox(message) => match message {
                 MessageBoxMessage::Close => {
-                    state.show_modal = false;
+                    state.modal_content = ModalState::Closed;
                 }
             },
         }
@@ -167,42 +205,64 @@ impl GurafuApplication {
     }
 
     fn view(state: &GurafuApplication) -> iced::Element<'_, GurafuMessage> {
-        let layout = pane_grid(&state.panes, |_, pane_state, _| match pane_state {
-            Pane::File => pane_grid::Content::new({
-                file::FileState::view(&state.file).map(GurafuMessage::File)
+        let layout = column![
+            row![
+                text("Программа для нахождения цикла Эйлера")
+                    .size(24)
+                    .font(Font {
+                        weight: font::Weight::Bold,
+                        ..Font::default()
+                    })
+                    .width(Fill),
+                button(svg("assets/icons/info.svg").style(styles::button_svg_style))
+                    .on_press(GurafuMessage::OpenInfo)
+                    .width(80),
+            ]
+            .padding([5, 10]),
+            pane_grid(&state.panes, |_, pane_state, _| match pane_state {
+                Pane::File => pane_grid::Content::new({
+                    file::FileState::view(&state.file).map(GurafuMessage::File)
+                })
+                .style(styles::pane_grid_style),
+                Pane::Canvas => pane_grid::Content::new({
+                    canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
+                })
+                .style(styles::pane_grid_style),
+                Pane::Player => pane_grid::Content::new({
+                    player::PlayerState::view(&state.player).map(GurafuMessage::Player)
+                })
+                .style(styles::pane_grid_style),
+                Pane::Toolbar => pane_grid::Content::new({
+                    toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
+                })
+                .style(styles::pane_grid_style),
             })
-            .style(styles::pane_grid_style),
-            Pane::Canvas => pane_grid::Content::new({
-                canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
-            })
-            .style(styles::pane_grid_style),
-            Pane::Player => pane_grid::Content::new({
-                player::PlayerState::view(&state.player).map(GurafuMessage::Player)
-            })
-            .style(styles::pane_grid_style),
-            Pane::Toolbar => pane_grid::Content::new({
-                toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
-            })
-            .style(styles::pane_grid_style),
-        })
-        .on_resize(10, GurafuMessage::PaneResized);
+            .on_resize(10, GurafuMessage::PaneResized)
+        ];
 
-        if state.show_modal {
-            modal::modal(
+        match state.modal_content {
+            ModalState::About => modal::modal(
                 layout,
                 message_box::MessageBoxState::view(&state.message_box)
                     .map(GurafuMessage::MessageBox),
                 GurafuMessage::CloseModal,
             )
-            .into()
-        } else {
-            layout.into()
+            .into(),
+            ModalState::AlgorithmEnded => modal::modal(
+                layout,
+                message_box::MessageBoxState::view(&state.message_box)
+                    .map(GurafuMessage::MessageBox),
+                GurafuMessage::CloseModal,
+            )
+            .into(),
+            ModalState::Closed => layout.into(),
         }
     }
 
-    fn open_modal(&mut self, circuit_found: bool) {
-        self.show_modal = true;
+    fn open_modal_after_algo(&mut self, circuit_found: bool) {
+        self.modal_content = ModalState::AlgorithmEnded;
         self.player.playing = false;
+        self.message_box.header_text = "Результаты работы алгоритма".to_string();
         if circuit_found {
             self.message_box.message_text =
                 "Алгоритм выполнен успешно, Эйлеров цикл найден".to_string();
@@ -212,7 +272,16 @@ impl GurafuApplication {
         }
     }
 
+    fn open_modal_about(&mut self) {
+        self.modal_content = ModalState::About;
+        self.player.playing = false;
+
+        self.message_box.header_text = "О программе".to_string();
+        self.message_box.message_text =
+            "Программа для наглядой визуализации нахождения цикла Эйлера.\n Выполнил Иванов Александр Евгеньевич, группа 424-3\n Программа построенна на фреймворке iced для Rust".to_string();
+    }
+
     fn theme(&self) -> iced::Theme {
-        iced::Theme::Dark
+        iced::Theme::Light
     }
 }

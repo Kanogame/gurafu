@@ -61,7 +61,7 @@ impl CanvasStateInternal {
                         x: start_on_grid.x + x_offset,
                         y: start_on_grid.y + y_offset,
                     }),
-                    5_f32 * (1_f32 / self.camera.scale),
+                    2_f32 * (1_f32 / self.camera.scale),
                 ));
 
                 y_offset += grid.step_size;
