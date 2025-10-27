@@ -316,6 +316,6 @@ impl CanvasState {
     }
 
     pub fn reset_algorithm(&mut self) {
-        self.algo.restart_algoritm();
+        self.algo.reset_algorithm(&mut self.graph);
     }
 }

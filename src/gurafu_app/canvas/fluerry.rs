@@ -56,10 +56,6 @@ impl FluerryState {
         }
     }
 
-    pub fn restart_algoritm(&mut self) {
-        self.algo_step = FluerryStep::NotStarted
-    }
-
     pub fn step_algorithm(
         &mut self,
         graph: &mut StableGraph<Circle, Arrow>,
@@ -395,7 +391,7 @@ impl FluerryState {
         }
     }
 
-    fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    pub fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
         self.graph_clone = graph.clone();
         self.algo_step = FluerryStep::Initializing;
         self.stack.clear();

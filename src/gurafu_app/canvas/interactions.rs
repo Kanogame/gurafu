@@ -1,12 +1,7 @@
 use iced::{Point, Size, mouse, widget::canvas};
 
 use crate::gurafu_app::{
-    canvas::{
-        CanvasMessage,
-        camera::Camera,
-        grid::Grid,
-        helpers,
-    },
+    canvas::{CanvasMessage, camera::Camera, grid::Grid, helpers},
     toolbar::ToolbarOptions,
 };
 
@@ -193,9 +188,7 @@ impl CanvasStateInternal {
         match self.toolbar_state {
             ToolbarOptions::Node => {
                 if cursor.is_some() {
-                    self.remove_node_from_grid(cursor.unwrap());
-
-                    return helpers::CAPTURED;
+                    return self.remove_node_from_grid(cursor.unwrap());
                 }
             }
             _ => {}
