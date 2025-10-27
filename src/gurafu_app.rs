@@ -1,12 +1,14 @@
 use iced::time::{self};
 
-use iced::widget::text;
 use iced::{Settings, Subscription, widget::pane_grid};
 
+use crate::gurafu_app::message_box::MessageBoxMessage;
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
 
 mod canvas;
 mod file;
+mod message_box;
+mod modal;
 mod player;
 mod styles;
 mod toolbar;
@@ -17,9 +19,9 @@ pub struct GurafuApplication {
     canvas: canvas::CanvasState,
     toolbar: toolbar::ToolbarState,
     player: player::PlayerState,
+    message_box: message_box::MessageBoxState,
 
-    show_completed_modal: bool,
-    completion_successed: bool,
+    show_modal: bool,
 }
 
 #[derive(Debug)]
@@ -37,6 +39,8 @@ enum GurafuMessage {
     Canvas(canvas::CanvasMessage),
     Toolbar(toolbar::ToolbarMessage),
     Player(player::PlayerMessage),
+    MessageBox(message_box::MessageBoxMessage),
+    CloseModal,
 
     AlgorithmTick,
 }
@@ -66,12 +70,12 @@ impl GurafuApplication {
             a: Box::new(pane_grid::Configuration::Split {
                 axis: pane_grid::Axis::Horizontal,
                 ratio: 0.8,
-                a: Box::new(pane_grid::Configuration::Pane(Pane::File)),
-                b: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
+                a: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
+                b: Box::new(pane_grid::Configuration::Pane(Pane::File)),
             }),
             b: Box::new(pane_grid::Configuration::Split {
                 axis: pane_grid::Axis::Horizontal,
-                ratio: 0.05,
+                ratio: 0.1,
                 a: Box::new(pane_grid::Configuration::Pane(Pane::Toolbar)),
                 b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)),
             }),
@@ -83,9 +87,9 @@ impl GurafuApplication {
             canvas: canvas::CanvasState::new(),
             toolbar: toolbar::ToolbarState::new(),
             player: player::PlayerState::new(),
+            message_box: message_box::MessageBoxState::new(),
 
-            show_completed_modal: false,
-            completion_successed: false,
+            show_modal: false,
         }
     }
 
@@ -124,8 +128,7 @@ impl GurafuApplication {
                 PlayerMessage::NextStep => match state.canvas.step_algorithm() {
                     Some(mes) => match mes {
                         CanvasMessage::AlgorithmFinished(res) => {
-                            state.show_completed_modal = true;
-                            state.completion_successed = res;
+                            state.open_modal(res);
                         }
                         _ => {}
                     },
@@ -138,12 +141,19 @@ impl GurafuApplication {
             GurafuMessage::AlgorithmTick => match state.canvas.step_algorithm() {
                 Some(mes) => match mes {
                     CanvasMessage::AlgorithmFinished(res) => {
-                        state.show_completed_modal = true;
-                        state.completion_successed = res;
+                        state.open_modal(res);
                     }
                     _ => {}
                 },
                 _ => {}
+            },
+            GurafuMessage::CloseModal => {
+                state.show_modal = false;
+            }
+            GurafuMessage::MessageBox(message) => match message {
+                MessageBoxMessage::Close => {
+                    state.show_modal = false;
+                }
             },
         }
     }
@@ -157,33 +167,48 @@ impl GurafuApplication {
     }
 
     fn view(state: &GurafuApplication) -> iced::Element<'_, GurafuMessage> {
-        if state.show_completed_modal {
-            if state.completion_successed {
-                text("Выполнение алгоритма завершилось успешно").into()
-            } else {
-                text("Выполнение алгоритма завершилось с ошибкой").into()
-            }
-        } else {
-            pane_grid(&state.panes, |_, pane_state, _| match pane_state {
-                Pane::File => pane_grid::Content::new({
-                    file::FileState::view(&state.file).map(GurafuMessage::File)
-                })
-                .style(styles::pane_grid_style),
-                Pane::Canvas => pane_grid::Content::new({
-                    canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
-                })
-                .style(styles::pane_grid_style),
-                Pane::Player => pane_grid::Content::new({
-                    player::PlayerState::view(&state.player).map(GurafuMessage::Player)
-                })
-                .style(styles::pane_grid_style),
-                Pane::Toolbar => pane_grid::Content::new({
-                    toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
-                })
-                .style(styles::pane_grid_style),
+        let layout = pane_grid(&state.panes, |_, pane_state, _| match pane_state {
+            Pane::File => pane_grid::Content::new({
+                file::FileState::view(&state.file).map(GurafuMessage::File)
             })
-            .on_resize(10, GurafuMessage::PaneResized)
+            .style(styles::pane_grid_style),
+            Pane::Canvas => pane_grid::Content::new({
+                canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
+            })
+            .style(styles::pane_grid_style),
+            Pane::Player => pane_grid::Content::new({
+                player::PlayerState::view(&state.player).map(GurafuMessage::Player)
+            })
+            .style(styles::pane_grid_style),
+            Pane::Toolbar => pane_grid::Content::new({
+                toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
+            })
+            .style(styles::pane_grid_style),
+        })
+        .on_resize(10, GurafuMessage::PaneResized);
+
+        if state.show_modal {
+            modal::modal(
+                layout,
+                message_box::MessageBoxState::view(&state.message_box)
+                    .map(GurafuMessage::MessageBox),
+                GurafuMessage::CloseModal,
+            )
             .into()
+        } else {
+            layout.into()
+        }
+    }
+
+    fn open_modal(&mut self, circuit_found: bool) {
+        self.show_modal = true;
+        self.player.playing = false;
+        if circuit_found {
+            self.message_box.message_text =
+                "Алгоритм выполнен успешно, Эйлеров цикл найден".to_string();
+        } else {
+            self.message_box.message_text =
+                "Алгоритм завершился, Эйлеров цикл не найден".to_string();
         }
     }
 

@@ -1,4 +1,8 @@
-use iced::widget::{Row, button, column, svg, text};
+use iced::{
+    Alignment,
+    Length::{Fill, Shrink},
+    widget::{Row, button, center, column, container, row, svg, text},
+};
 
 use crate::gurafu_app::styles;
 
@@ -31,9 +35,9 @@ impl ToolbarOptions {
 
     fn name(&self) -> &str {
         match self {
-            ToolbarOptions::Hand => "Hand",
-            ToolbarOptions::Node => "Node",
-            ToolbarOptions::Connection => "Connection",
+            ToolbarOptions::Hand => "Рука",
+            ToolbarOptions::Node => "Узел",
+            ToolbarOptions::Connection => "Связь",
         }
     }
 
@@ -57,17 +61,25 @@ impl ToolbarState {
         }
     }
 
-    //pub fn update(state: &mut ToolbarState, message: ToolbarMessage) {}
-
     pub fn view(state: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
         column![
             Row::with_children(ToolbarOptions::VALUES.map(|el| {
-                button(svg(el.icon()).style(styles::button_svg_style))
-                    .on_press(el.to_message())
-                    .into()
-            })),
-            text(state.state.name()),
+                button(center(
+                    row![
+                        text(el.name().to_string()),
+                        svg(el.icon()).style(styles::button_svg_style).width(Shrink)
+                    ]
+                    .spacing(10),
+                ))
+                .on_press(el.to_message())
+                .into()
+            }))
+            .spacing(15)
+            .padding([5, 10]),
+            text("Выбранный инструмент: ".to_string() + state.state.name()),
         ]
+        .spacing(10)
+        .padding([5, 0])
         .into()
     }
 }

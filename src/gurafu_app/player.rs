@@ -35,7 +35,7 @@ impl PlayerState {
 
     pub fn view(state: &PlayerState) -> iced::Element<'_, PlayerMessage> {
         column![
-            text("Timeline").size(16).font(Font {
+            text("Управление алгоритмом").size(16).font(Font {
                 weight: font::Weight::Bold,
                 ..Font::default()
             }),
@@ -52,7 +52,7 @@ impl PlayerState {
                 })
                 .align_y(Alignment::Center),
             row![
-                button(if state.playing {
+                button(if !state.playing {
                     svg("assets/icons/play.svg").style(styles::button_svg_style)
                 } else {
                     svg("assets/icons/pause.svg").style(styles::button_svg_style)
@@ -63,6 +63,7 @@ impl PlayerState {
                 button(svg("assets/icons/next.svg").style(styles::button_svg_style))
                     .on_press(PlayerMessage::NextStep),
             ]
+            .spacing(5)
         ]
         .padding(5)
         .spacing(5)
@@ -87,11 +88,11 @@ impl PlayerState {
             }
             3.0 => {
                 self.slider_text = "2".to_string();
-                self.time_delay = time::Duration::from_millis(50)
+                self.time_delay = time::Duration::from_millis(500)
             }
             4.0 => {
                 self.slider_text = "4".to_string();
-                self.time_delay = time::Duration::from_millis(25)
+                self.time_delay = time::Duration::from_millis(250)
             }
             _ => {}
         }

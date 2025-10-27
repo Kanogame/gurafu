@@ -19,7 +19,7 @@ impl FileState {
 
     pub fn view(&self) -> iced::Element<'_, FileMessage> {
         column![
-            text("Browser").size(16).font(Font {
+            text("Файлы").size(16).font(Font {
                 weight: font::Weight::Bold,
                 ..Font::default()
             }),
