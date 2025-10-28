@@ -1,7 +1,4 @@
-
-use iced::{
-    widget::canvas::{Path}, Color
-};
+use iced::{Color, widget::canvas::Path};
 
 pub mod arrow;
 pub mod circle;
@@ -12,5 +9,3 @@ pub trait Drawable {
     fn into_path(&self, camera: &Camera) -> Path;
     fn get_color(&self) -> Color;
 }
-
-

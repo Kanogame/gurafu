@@ -1,8 +1,43 @@
 use core::fmt;
 
 use iced::{Color, Point, Theme, widget::canvas::Path};
+use serde::{Deserialize, Serialize};
 
-use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
+use crate::gurafu_app::{
+    Node,
+    canvas::{camera::Camera, drawable::Drawable},
+};
+
+impl Node {
+    pub fn into_cricle(&self) -> Circle {
+        Circle {
+            center: Point {
+                x: self.x,
+                y: self.y,
+            },
+            radius: 30.0,
+            color: Theme::Dark.palette().primary,
+        }
+    }
+}
+
+impl Into<Point> for &Node {
+    fn into(self) -> Point {
+        Point {
+            x: self.x,
+            y: self.y,
+        }
+    }
+}
+
+impl From<Point> for Node {
+    fn from(value: Point) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Circle {

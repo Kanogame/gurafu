@@ -1,10 +1,17 @@
+use core::fmt;
+use std::fmt::Debug;
+
 use iced::Length::Fill;
 use iced::time::{self};
 use iced::widget::{button, column, row, svg, text};
-use iced::{Font, font};
+use iced::{Font, Task, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
+use petgraph::prelude::StableGraph;
+use rfd::AsyncFileDialog;
+use serde::{Deserialize, Serialize};
 
+use crate::gurafu_app::canvas::CanvasSerializable;
 use crate::gurafu_app::file::FileMessage;
 use crate::gurafu_app::message_box::MessageBoxMessage;
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
@@ -45,7 +52,7 @@ enum GurafuMessage {
     Player(player::PlayerMessage),
     MessageBox(message_box::MessageBoxMessage),
 
-    //FileOpened(Result<C, String>),
+    FileOpened(Result<String, String>),
     CloseModal,
     OpenInfo,
     AlgorithmTick,
@@ -109,31 +116,39 @@ impl GurafuApplication {
         }
     }
 
-    fn update(state: &mut GurafuApplication, message: GurafuMessage) {
+    fn update(state: &mut GurafuApplication, message: GurafuMessage) -> Task<GurafuMessage> {
         match message {
             GurafuMessage::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 state.panes.resize(split, ratio);
             }
             GurafuMessage::File(message) => match message {
                 FileMessage::OpenFile => {
-                    //    let dialog = rdf::AsyncFileDialog::new()
-                    //        .add_filter("json", &["json"])
-                    //        .pick_file();
-                    //    Task::future(dialog)
-                    //        .and_then(|file| {
-                    //        Task::future(move |mut sender| {
-                    //        let content = std::fs::read_to_string(file.path())
-                    //            .unwrap_or_default();
-                    //        let result = serde_json::from_str::<CanvasSerializaion>(&content)
-                    //            .map_err(|e| e.to_string());
-                    //        let _ = sender.try_send(result);
-                    //    })
-                    //})
-                    //.map(GurafuMessage::FileOpened)
+                    return Task::future(async {
+                        let file = rfd::AsyncFileDialog::new()
+                            .add_filter("json", &["json"])
+                            .pick_file()
+                            .await;
+
+                        if let Some(file) = file {
+                            match std::fs::read_to_string(file.path()) {
+                                Ok(content) => GurafuMessage::FileOpened(Ok(content)),
+                                Err(e) => GurafuMessage::FileOpened(Err(e.to_string())),
+                            }
+                        } else {
+                            GurafuMessage::FileOpened(Err("No file selected".to_string()))
+                        }
+                    });
                 }
                 FileMessage::SaveFile => {}
             },
-            //GurafuMessage::FileOpened(_) => {}
+            GurafuMessage::FileOpened(res) => match res {
+                Ok(content) => {
+                    let graph = serde_json::from_str::<StableGraph<Node, u32>>(&content).unwrap();
+
+                    state.canvas.graph = (CanvasSerializable { graph: graph }).into();
+                }
+                _ => {}
+            },
             GurafuMessage::Canvas(message) => match message {
                 CanvasMessage::CreateNodeOnGrid(world) => {
                     state.canvas.create_new_node_on_grid(world);
@@ -194,6 +209,8 @@ impl GurafuApplication {
                 }
             },
         }
+
+        Task::none()
     }
 
     fn subscription(state: &GurafuApplication) -> Subscription<GurafuMessage> {
@@ -284,4 +301,10 @@ impl GurafuApplication {
     fn theme(&self) -> iced::Theme {
         iced::Theme::Light
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Node {
+    x: f32,
+    y: f32,
 }

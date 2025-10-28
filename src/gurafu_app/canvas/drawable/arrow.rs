@@ -5,7 +5,10 @@ use iced::{
     widget::canvas::{self, Path, path::lyon_path::geom::Vector},
 };
 
-use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
+use crate::gurafu_app::{
+    Node,
+    canvas::{camera::Camera, drawable::Drawable},
+};
 
 #[derive(Clone)]
 pub struct Arrow {
@@ -96,6 +99,28 @@ impl Drawable for Arrow {
 }
 
 impl Arrow {
+    pub fn new(start: Point, end: Point) -> Self {
+        Arrow {
+            start: start,
+            end: end,
+            line_width: 10.0,
+            arrowhead_size: 30.0,
+            offset: 0.0,
+            color: Color::from_rgb8(80, 80, 80),
+        }
+    }
+
+    pub fn from_nodes(source: &Node, target: &Node) -> Self {
+        Self {
+            start: source.into(),
+            end: target.into(),
+            line_width: 5.0,
+            arrowhead_size: 10.0,
+            offset: 30.0,
+            color: Color::from_rgb8(80, 80, 80),
+        }
+    }
+
     pub fn highlight_selected(&mut self) {
         self.color = Color::from_rgb8(0, 255, 255);
     }

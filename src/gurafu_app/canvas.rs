@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use iced::{
     Color, Point, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
@@ -7,11 +9,14 @@ use iced::{
     },
 };
 use petgraph::{
+    graph::NodeIndex,
     prelude::StableGraph,
-    visit::{IntoEdgeReferences, IntoNodeReferences},
+    visit::{EdgeRef, IntoEdgeReferences, IntoNodeReferences},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::{
+    Node,
     canvas::{
         canvas_frame::CanvasFrame,
         drawable::{Drawable, arrow::Arrow, circle::Circle},
@@ -312,5 +317,50 @@ impl CanvasState {
 
     pub fn reset_algorithm(&mut self) {
         self.algo.reset_algorithm(&mut self.graph);
+    }
+}
+
+pub struct CanvasSerializable {
+    pub graph: StableGraph<Node, u32>,
+}
+
+impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
+    fn into(self) -> StableGraph<Circle, Arrow> {
+        let mut res = StableGraph::new();
+        let mut node_map: HashMap<NodeIndex, (NodeIndex, &Node)> = HashMap::new();
+
+        self.graph.node_references().for_each(|(idx, node)| {
+            node_map.insert(idx, (res.add_node(node.into_cricle()), node));
+        });
+
+        self.graph.edge_references().for_each(|eref| {
+            let src = *node_map.get(&eref.source()).unwrap();
+            let trg = *node_map.get(&eref.target()).unwrap();
+
+            res.add_edge(src.0, trg.0, Arrow::from_nodes(src.1, trg.1));
+        });
+
+        res
+    }
+}
+
+impl Into<CanvasSerializable> for CanvasState {
+    fn into(self) -> CanvasSerializable {
+        let mut res: StableGraph<Node, u32> = StableGraph::new();
+        let mut node_map: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+
+        self.graph.node_references().for_each(|(idx, cl)| {
+            node_map.insert(idx, res.add_node(cl.center.into()));
+        });
+
+        self.graph.edge_references().for_each(|eref| {
+            res.add_edge(
+                *node_map.get(&eref.source()).unwrap(),
+                *node_map.get(&eref.target()).unwrap(),
+                0,
+            );
+        });
+
+        CanvasSerializable { graph: res }
     }
 }
