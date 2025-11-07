@@ -34,6 +34,7 @@ mod helpers;
 // just zoom, pan and interaction state
 mod interactions;
 
+
 pub struct CanvasState {
     pub toolbar_state: ToolbarOptions,
     //canvas_cache: Cache,

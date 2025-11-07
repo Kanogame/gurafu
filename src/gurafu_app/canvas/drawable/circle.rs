@@ -38,7 +38,7 @@ impl From<Point> for Node {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Circle {
     pub id: usize,
     pub center: Point,

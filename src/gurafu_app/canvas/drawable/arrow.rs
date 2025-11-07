@@ -10,7 +10,7 @@ use crate::gurafu_app::{
     canvas::{camera::Camera, drawable::DrawablePath},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Arrow {
     pub start: Point,
     pub end: Point,
