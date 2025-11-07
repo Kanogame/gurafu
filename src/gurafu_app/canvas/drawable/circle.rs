@@ -1,16 +1,15 @@
 use core::fmt;
 
-use iced::{Color, Point, Theme, widget::canvas::Path};
-use serde::{Deserialize, Serialize};
-
+use iced::{Color, Font, Pixels, Point, Theme, alignment, widget::canvas::{Path, Text}};
 use crate::gurafu_app::{
     Node,
-    canvas::{camera::Camera, drawable::Drawable},
+    canvas::{camera::Camera, drawable::{DrawablePath, DrawableText}},
 };
 
 impl Node {
     pub fn into_cricle(&self) -> Circle {
         Circle {
+            id: 0,
             center: Point {
                 x: self.x,
                 y: self.y,
@@ -41,6 +40,7 @@ impl From<Point> for Node {
 
 #[derive(Clone)]
 pub struct Circle {
+    pub id: usize,
     pub center: Point,
     pub radius: f32,
     pub color: Color,
@@ -82,7 +82,7 @@ impl fmt::Debug for Circle {
     }
 }
 
-impl Drawable for Circle {
+impl DrawablePath for Circle {
     fn into_path(&self, camera: &Camera) -> Path {
         Path::circle(
             camera.world_to_screen(self.center),
@@ -90,7 +90,27 @@ impl Drawable for Circle {
         )
     }
 
-    fn get_color(&self) -> Color {
+    fn get_path_color(&self) -> Color {
         return self.color;
+    }
+}
+
+impl DrawableText for Circle {
+    fn into_text(&self, camera: &Camera) -> Text {
+        let font_size = 20.0;
+
+        Text {
+            content: self.id.to_string(),  
+            position: camera.world_to_screen(self.center),
+            color: Color::BLACK,  
+            size: Pixels::from(font_size * camera.scale),  
+            horizontal_alignment: alignment::Horizontal::Center,
+            vertical_alignment: alignment::Vertical::Center,
+            font: Font {
+                weight: iced::font::Weight::Bold,
+                ..Font::default()
+            },
+            ..Text::default()
+        }
     }
 }

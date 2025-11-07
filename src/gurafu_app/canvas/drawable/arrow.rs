@@ -7,7 +7,7 @@ use iced::{
 
 use crate::gurafu_app::{
     Node,
-    canvas::{camera::Camera, drawable::Drawable},
+    canvas::{camera::Camera, drawable::DrawablePath},
 };
 
 #[derive(Clone)]
@@ -26,7 +26,7 @@ impl fmt::Debug for Arrow {
     }
 }
 
-impl Drawable for Arrow {
+impl DrawablePath for Arrow {
     fn into_path(&self, camera: &Camera) -> Path {
         let mut screen_start = camera.world_to_screen(self.start);
         let mut screen_end = camera.world_to_screen(self.end);
@@ -93,7 +93,7 @@ impl Drawable for Arrow {
         })
     }
 
-    fn get_color(&self) -> Color {
+    fn get_path_color(&self) -> Color {
         return self.color;
     }
 }

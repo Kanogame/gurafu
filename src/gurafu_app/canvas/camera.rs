@@ -36,8 +36,8 @@ impl Camera {
     }
 
     pub fn apply_drag(&mut self, offset: Point) {
-        self.pos.x += offset.x;
-        self.pos.y += offset.y;
+        self.pos.x += offset.x * self.scale;
+        self.pos.y += offset.y * self.scale;
     }
 
     pub fn apply_scroll(&mut self, scroll: f32) {

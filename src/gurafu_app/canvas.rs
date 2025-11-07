@@ -13,13 +13,12 @@ use petgraph::{
     prelude::StableGraph,
     visit::{EdgeRef, IntoEdgeReferences, IntoNodeReferences},
 };
-use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::{
     Node,
     canvas::{
         canvas_frame::CanvasFrame,
-        drawable::{Drawable, arrow::Arrow, circle::Circle},
+        drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle},
         fluerry::FluerryState,
         grid::Grid,
     },
@@ -141,21 +140,30 @@ impl canvas::Program<CanvasMessage> for CanvasState {
             frame.fill(point, Color::from_rgb8(120, 120, 120));
         }
 
-        let mut drawable_list: Vec<&dyn Drawable>;
+        let mut drawable_path_list: Vec<&dyn DrawablePath>;
+        let drawable_text_list: Vec<&dyn DrawableText>;
 
-        drawable_list = self
+        drawable_path_list = self
             .graph
             .node_references()
-            .map(|(_, c)| c as &dyn Drawable)
+            .map(|(_, c)| c as &dyn DrawablePath)
             .collect();
-        drawable_list.append(
+
+        drawable_text_list = self
+            .graph
+            .node_references()
+            .map(|(_, c)| c as &dyn DrawableText)
+            .collect();
+
+        drawable_path_list.append(
             &mut self
                 .graph
                 .edge_references()
-                .map(|el| el.weight() as &dyn Drawable)
+                .map(|el| el.weight() as &dyn DrawablePath)
                 .collect(),
         );
-        frame.fill_frame(drawable_list);
+        frame.fill_frame(drawable_path_list);
+        frame.fill_text(drawable_text_list);
 
         match cursor.position_in(bounds) {
             Some(c) => match self.draw_arrow(state.convert_screen_to_world(c)) {
@@ -218,6 +226,7 @@ impl CanvasState {
         let grid_pos = self.grid.to_grid(world);
 
         let object = Circle {
+            id: 0,
             center: grid_pos,
             radius: 30_f32,
             color: Theme::Light.palette().primary,
@@ -227,6 +236,8 @@ impl CanvasState {
             Some(_) => {}
             None => {
                 let node_index = self.graph.add_node(object);
+
+                self.graph.node_weight_mut(node_index).unwrap().id = node_index.index();
 
                 self.grid.add_to_grid(grid_pos, node_index);
             }

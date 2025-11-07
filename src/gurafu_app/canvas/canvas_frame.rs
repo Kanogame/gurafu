@@ -1,6 +1,6 @@
 use iced::{widget::canvas::{self, Fill, Geometry, Path}, Renderer, Size};
 
-use crate::gurafu_app::canvas::{camera::Camera, drawable::Drawable};
+use crate::gurafu_app::canvas::{camera::Camera, drawable::{DrawablePath, DrawableText}};
 
 
 pub struct CanvasFrame{
@@ -20,10 +20,17 @@ impl CanvasFrame {
             self.raw.fill(path, fill);
     } 
 
-    pub fn fill_frame(&mut self, elements: Vec<&dyn Drawable>) {
+    pub fn fill_frame(&mut self, elements: Vec<&dyn DrawablePath>) {
         
         for el in elements {
-            self.raw.fill(&el.into_path(&self.camera), el.get_color());
+            self.raw.fill(&el.into_path(&self.camera), el.get_path_color());
+        }
+    } 
+
+    pub fn fill_text(&mut self, elements: Vec<&dyn DrawableText>) {
+        
+        for el in elements {
+            self.raw.fill_text(el.into_text(&self.camera));
         }
     } 
 
