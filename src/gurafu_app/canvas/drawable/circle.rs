@@ -103,7 +103,7 @@ impl DrawableText for Circle {
             content: self.id.to_string(),  
             position: camera.world_to_screen(self.center),
             color: Color::BLACK,  
-            size: Pixels::from(font_size * camera.scale),  
+            size: Pixels::from(font_size / camera.scale),  
             horizontal_alignment: alignment::Horizontal::Center,
             vertical_alignment: alignment::Vertical::Center,
             font: Font {

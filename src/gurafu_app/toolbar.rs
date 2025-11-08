@@ -3,7 +3,7 @@ use iced::{
     widget::{Row, button, center, column, row, svg, text},
 };
 
-use crate::gurafu_app::styles;
+use crate::gurafu_app::{styles, svg_button::svg_button};
 
 pub struct ToolbarState {
     pub state: ToolbarOptions,
@@ -63,15 +63,7 @@ impl ToolbarState {
     pub fn view(state: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
         column![
             Row::with_children(ToolbarOptions::VALUES.map(|el| {
-                button(center(
-                    row![
-                        text(el.name().to_string()),
-                        svg(el.icon()).style(styles::button_svg_style).width(Shrink)
-                    ]
-                    .spacing(10),
-                ))
-                .on_press(el.to_message())
-                .into()
+                svg_button(el.name().into(), el.icon().into(), el.to_message())
             }))
             .spacing(15)
             .padding([5, 10]),

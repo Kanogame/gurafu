@@ -22,6 +22,7 @@ mod modal;
 mod player;
 mod styles;
 mod toolbar;
+mod svg_button;
 
 pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
@@ -53,11 +54,11 @@ enum GurafuMessage {
 
     FileOpened(Result<String, String>),
     FileSave(FileHandle),
-    FileSaved,
     CloseModal,
     OpenInfo,
     AlgorithmTick,
-
+    
+    None,
 }
 
 enum ModalState {
@@ -137,7 +138,7 @@ impl GurafuApplication {
                                 Err(e) => GurafuMessage::FileOpened(Err(e.to_string())),
                             }
                         } else {
-                            GurafuMessage::FileOpened(Err("No file selected".to_string()))
+                            GurafuMessage::FileOpened(Err("Не выбран файл".to_string()))
                         }
                     });
                 }
@@ -151,38 +152,39 @@ impl GurafuApplication {
                         if let Some(file) = file {
                             GurafuMessage::FileSave(file)
                         } else {
-                            GurafuMessage::FileOpened(Err("No file selected".to_string()))
+                            GurafuMessage::FileOpened(Err("Не выбран файл".to_string()))
                         }
                     });
+                },
+                FileMessage::NewFile => {
+                    state.load_graph(CanvasSerializable::new());
                 }
             },
             GurafuMessage::FileOpened(res) => match res {
                 Ok(content) => {
-                    println!("{}", content);
-
-                    let graph = serde_json::from_str::<CanvasSerializable>(&content).unwrap();
-
-                    state.canvas.graph = graph.into();
+                    match serde_json::from_str::<CanvasSerializable>(&content) {
+                        Ok(graph) => {
+                            state.load_graph(graph);
+                        }
+                        Err(er) => {
+                            state.open_modal_generic_error(format!("Неверное форматирование файла графа, ошибка: {}", er));
+                        }
+                    }
                 }
                 _ => {}
             },
-            GurafuMessage::FileSaved => {
-                println!("file saving finished");
-            }
             GurafuMessage::FileSave(file) => {
-                println!("file saving begins");
-
                 let serializable: CanvasSerializable = state.canvas.clone().into();
 
                 match serde_json::to_string(&serializable) {
                     Ok(json) => {
                         return Task::future(async move {
                             let _ = file.write(json.as_bytes()).await;
-                            return GurafuMessage::FileSaved;
+                            return GurafuMessage::None;
                         });
                     }
                     Err(er) => {
-                        panic!("{}", er);
+                        state.open_modal_generic_error(format!("Не удалось записать файл, ошибка: {}", er));
                     } 
                 }
             }
@@ -248,6 +250,7 @@ impl GurafuApplication {
                     state.modal_content = ModalState::Closed;
                 }
             },
+            GurafuMessage::None => {}
         }
 
         Task::none()
@@ -336,7 +339,17 @@ impl GurafuApplication {
                 .collect::<Vec<String>>()
                 .join(" -> ")
         );
+
+        self.canvas.reset_algorithm();
        
+    }
+
+    fn open_modal_generic_error(&mut self, error_text: String) {
+        self.modal_content = ModalState::About;
+        self.player.playing = false;
+
+        self.message_box.header_text = "Произошла ошибка".to_string();
+        self.message_box.message_text =error_text;
     }
 
     fn open_modal_about(&mut self) {
@@ -346,6 +359,11 @@ impl GurafuApplication {
         self.message_box.header_text = "О программе".to_string();
         self.message_box.message_text =
             "Программа для наглядой визуализации нахождения цикла Эйлера.\n Выполнил Иванов Александр Евгеньевич, группа 424-3\n Программа построенна на фреймворке iced для Rust".to_string();
+    }
+
+    fn load_graph(&mut self, graph: CanvasSerializable) {
+        self.canvas.graph = graph.into();
+        self.canvas.reset_algorithm();
     }
 
     fn theme(&self) -> iced::Theme {

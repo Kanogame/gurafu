@@ -2,7 +2,8 @@ use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef
 use std::collections::{HashSet, VecDeque};
 
 use crate::gurafu_app::canvas::{
-    AlgorithmMessage, drawable::{arrow::Arrow, circle::Circle}
+    AlgorithmMessage,
+    drawable::{arrow::Arrow, circle::Circle},
 };
 
 #[derive(Clone)]
@@ -40,8 +41,6 @@ pub enum FlueryStep {
     Failed,
 }
 
-
-
 impl FlueryState {
     pub fn new() -> Self {
         Self {
@@ -73,7 +72,9 @@ impl FlueryState {
             FlueryStep::Backtracking => self.backtrack_all(graph),
             FlueryStep::Completed => {
                 self.step_explanation = "Algorithm completed successfully".into();
-                return Some(AlgorithmMessage::AlgorithmSuccess(self.circuit.iter().map(|el| el.index()).collect()));
+                return Some(AlgorithmMessage::AlgorithmSuccess(
+                    self.circuit.iter().map(|el| el.index()).collect(),
+                ));
             }
             FlueryStep::Failed => {
                 self.step_explanation = "Algorithm failed (graph not Eulerian)".into();
@@ -89,55 +90,54 @@ impl FlueryState {
     }
 
     fn find_start_node(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-    // === 1️⃣ Проверка эйлеровости графа ===
-    if !Self::is_eulerian_directed(&self.graph_clone) {
-        self.algo_step = FlueryStep::Failed;
-        self.step_explanation =
-            "Graph is not Eulerian: not strongly connected or in/out degrees differ".into();
-        return;
-    }
-
-    // === 2️⃣ Поиск стартовой вершины ===
-    self.current_node = self.graph_clone.node_indices().find(|&n| {
-        self.graph_clone
-            .edges_directed(n, Direction::Outgoing)
-            .count() > 0
-    });
-
-    if let Some(start) = self.current_node {
-        self.stack.push(start);
-        if let Some(node) = graph.node_weight_mut(start) {
-            node.highlight_start();
+        // === 1️⃣ Проверка эйлеровости графа ===
+        if !Self::is_eulerian_directed(&self.graph_clone) {
+            self.algo_step = FlueryStep::Failed;
+            self.step_explanation =
+                "Graph is not Eulerian: not strongly connected or in/out degrees differ".into();
+            return;
         }
-        self.algo_step = FlueryStep::CheckingOutgoing;
-        self.step_explanation = format!("Starting from node {:?}", start);
-    } else {
-        self.algo_step = FlueryStep::Failed;
-        self.step_explanation = "No start node found".into();
+
+        // === 2️⃣ Поиск стартовой вершины ===
+        self.current_node = self.graph_clone.node_indices().find(|&n| {
+            self.graph_clone
+                .edges_directed(n, Direction::Outgoing)
+                .count()
+                > 0
+        });
+
+        if let Some(start) = self.current_node {
+            self.stack.push(start);
+            if let Some(node) = graph.node_weight_mut(start) {
+                node.highlight_start();
+            }
+            self.algo_step = FlueryStep::CheckingOutgoing;
+            self.step_explanation = format!("Starting from node {:?}", start);
+        } else {
+            self.algo_step = FlueryStep::Failed;
+            self.step_explanation = "No start node found".into();
+        }
     }
-}
 
-fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
-    // Проверяем: граф должен быть сильно связным
-    use petgraph::algo::kosaraju_scc;
+    fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
+        // Проверяем: граф должен быть сильно связным
+        use petgraph::algo::kosaraju_scc;
 
-    let scc = kosaraju_scc(graph);
-    if scc.len() != 1 {
-        return false;
-    }
-
-    // Проверяем баланс входящих/исходящих рёбер
-    for node in graph.node_indices() {
-        let in_deg = graph.edges_directed(node, Direction::Incoming).count();
-        let out_deg = graph.edges_directed(node, Direction::Outgoing).count();
-        if in_deg != out_deg {
+        let scc = kosaraju_scc(graph);
+        if scc.len() != 1 {
             return false;
         }
+
+        // Проверяем баланс входящих/исходящих рёбер
+        for node in graph.node_indices() {
+            let in_deg = graph.edges_directed(node, Direction::Incoming).count();
+            let out_deg = graph.edges_directed(node, Direction::Outgoing).count();
+            if in_deg != out_deg {
+                return false;
+            }
+        }
+        true
     }
-    true
-}
-
-
 
     fn check_outgoing_edges(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
         self.clear_temporary_highlights(graph);
@@ -150,7 +150,8 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
             }
         };
 
-        let outgoing: Vec<_> = self.graph_clone
+        let outgoing: Vec<_> = self
+            .graph_clone
             .edges_directed(cur, Direction::Outgoing)
             .map(|e| (e.target(), e.id()))
             .collect();
@@ -246,12 +247,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
         }
     }
 
-    fn is_bridge(
-        &self,
-        from: NodeIndex,
-        to: NodeIndex,
-        eid: petgraph::graph::EdgeIndex,
-    ) -> bool {
+    fn is_bridge(&self, from: NodeIndex, to: NodeIndex, eid: petgraph::graph::EdgeIndex) -> bool {
         let mut temp = self.graph_clone.clone();
         temp.remove_edge(eid);
 

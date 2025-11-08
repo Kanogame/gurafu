@@ -6,8 +6,6 @@ TODO:
 1. Failed algo paint red
 2. restart algo after modal
 3. Add current node highlighting
-4. Add auto-exit check (if in-out is not same)
-
 
 It can:
 1. Load graphs
@@ -18,8 +16,6 @@ It can:
 
 roadmap:
 6. add import/export via file
-    - add json serialization/deserialization
-    - save/open json files
 
 7. Refactor
 8. Bench & optimizations

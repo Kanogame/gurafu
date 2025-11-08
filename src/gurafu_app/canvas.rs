@@ -342,6 +342,14 @@ pub struct CanvasSerializable {
     pub graph: StableGraph<Node, u32>,
 }
 
+impl CanvasSerializable {
+    pub fn new() -> Self {
+        return CanvasSerializable {
+            graph: StableGraph::new()
+        };
+    }
+}
+
 impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
     fn into(self) -> StableGraph<Circle, Arrow> {
         let mut res = StableGraph::new();
