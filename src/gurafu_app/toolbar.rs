@@ -1,9 +1,6 @@
-use iced::{
-    Length::Shrink,
-    widget::{Row, button, center, column, row, svg, text},
-};
+use iced::widget::{Row, column, text};
 
-use crate::gurafu_app::{styles, svg_button::svg_button};
+use crate::gurafu_app::svg_button::svg_button;
 
 pub struct ToolbarState {
     pub state: ToolbarOptions,

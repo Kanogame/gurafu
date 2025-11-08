@@ -99,17 +99,6 @@ impl DrawablePath for Arrow {
 }
 
 impl Arrow {
-    pub fn new(start: Point, end: Point) -> Self {
-        Arrow {
-            start: start,
-            end: end,
-            line_width: 10.0,
-            arrowhead_size: 30.0,
-            offset: 0.0,
-            color: Color::from_rgb8(80, 80, 80),
-        }
-    }
-
     pub fn from_nodes(source: &Node, target: &Node) -> Self {
         Self {
             start: source.into(),

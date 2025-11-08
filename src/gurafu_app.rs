@@ -6,7 +6,6 @@ use iced::widget::{button, column, row, svg, text};
 use iced::{Font, Task, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
-use petgraph::prelude::StableGraph;
 use rfd::{AsyncFileDialog, FileHandle};
 use serde::{Deserialize, Serialize};
 
@@ -58,13 +57,12 @@ enum GurafuMessage {
     OpenInfo,
     AlgorithmTick,
     
-    None,
+    Error(String),
 }
 
 enum ModalState {
     Closed,
-    AlgorithmEnded,
-    About,
+    Open,
 }
 
 pub fn run() -> iced::Result {
@@ -179,8 +177,12 @@ impl GurafuApplication {
                 match serde_json::to_string(&serializable) {
                     Ok(json) => {
                         return Task::future(async move {
-                            let _ = file.write(json.as_bytes()).await;
-                            return GurafuMessage::None;
+                            let res = file.write(json.as_bytes()).await;
+                            if res.is_err() {
+                                return GurafuMessage::Error(format!("Не удалось записать файл, ошибка: {:?}", res.err()));
+                            } else {
+                                return GurafuMessage::Error("".to_string());
+                            }
                         });
                     }
                     Err(er) => {
@@ -250,7 +252,11 @@ impl GurafuApplication {
                     state.modal_content = ModalState::Closed;
                 }
             },
-            GurafuMessage::None => {}
+            GurafuMessage::Error(s) => {
+                if s.len() > 0 {
+                    state.open_modal_generic_error(s);
+                }
+            }
         }
 
         Task::none()
@@ -301,14 +307,7 @@ impl GurafuApplication {
         ];
 
         match state.modal_content {
-            ModalState::About => modal::modal(
-                layout,
-                message_box::MessageBoxState::view(&state.message_box)
-                    .map(GurafuMessage::MessageBox),
-                GurafuMessage::CloseModal,
-            )
-            .into(),
-            ModalState::AlgorithmEnded => modal::modal(
+            ModalState::Open => modal::modal(
                 layout,
                 message_box::MessageBoxState::view(&state.message_box)
                     .map(GurafuMessage::MessageBox),
@@ -320,7 +319,7 @@ impl GurafuApplication {
     }
 
     fn open_modal_algo_fail(&mut self) {
-        self.modal_content = ModalState::AlgorithmEnded;
+        self.modal_content = ModalState::Open;
         self.player.playing = false;
         self.message_box.header_text = "Результаты работы алгоритма".to_string();
  
@@ -329,7 +328,7 @@ impl GurafuApplication {
     }
 
     fn open_modal_algo_success(&mut self, circuit: Vec<usize>) {
-        self.modal_content = ModalState::AlgorithmEnded;
+        self.modal_content = ModalState::Open;
         self.player.playing = false;
         self.message_box.header_text = "Результаты работы алгоритма".to_string();
         self.message_box.message_text = format!("Алгоритм выполнен успешно, Эйлеров цикл: {}", 
@@ -345,7 +344,7 @@ impl GurafuApplication {
     }
 
     fn open_modal_generic_error(&mut self, error_text: String) {
-        self.modal_content = ModalState::About;
+        self.modal_content = ModalState::Open;
         self.player.playing = false;
 
         self.message_box.header_text = "Произошла ошибка".to_string();
@@ -353,7 +352,7 @@ impl GurafuApplication {
     }
 
     fn open_modal_about(&mut self) {
-        self.modal_content = ModalState::About;
+        self.modal_content = ModalState::Open;
         self.player.playing = false;
 
         self.message_box.header_text = "О программе".to_string();

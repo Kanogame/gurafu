@@ -1,9 +1,9 @@
 use iced::{
     Font, font,
-    widget::{button, column, row, svg, text},
+    widget::{ column, text},
 };
 
-use crate::gurafu_app::{styles, svg_button::svg_button};
+use crate::gurafu_app::{svg_button::svg_button};
 
 pub struct FileState {
     // state
