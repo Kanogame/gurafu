@@ -17,9 +17,6 @@ It can:
 6. Display algorithms step-by-step 
 
 roadmap:
-5. UI rework
-    + add text helpers (?)
-
 6. add import/export via file
     - add json serialization/deserialization
     - save/open json files
