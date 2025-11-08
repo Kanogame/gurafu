@@ -18,10 +18,7 @@ It can:
 
 roadmap:
 5. UI rework
-    
-    + add messageboxes (or and notifs) about algo status - "euler path found"
-    - add Ids to nodes
-    + add text helpers
+    + add text helpers (?)
 
 6. add import/export via file
     - add json serialization/deserialization

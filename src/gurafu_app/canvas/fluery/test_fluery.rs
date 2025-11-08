@@ -2,7 +2,7 @@
 mod test_fluery {
     use crate::gurafu_app::canvas::drawable::arrow::Arrow;
     use crate::gurafu_app::canvas::drawable::circle::Circle;
-    use crate::gurafu_app::canvas::fluerry::{FluerryState, FluerryStep};
+    use crate::gurafu_app::canvas::fluery::{FlueryState, FlueryStep};
 
     use petgraph::prelude::StableGraph;
     use petgraph::stable_graph::NodeIndex;
@@ -26,9 +26,9 @@ mod test_fluery {
         g
     }
 
-    fn run_fluerry(mut algo: FluerryState, mut graph: StableGraph<Circle, Arrow>) -> FluerryStep {
-        algo.algo_step = FluerryStep::CheckingOutgoing;
-        while algo.algo_step != FluerryStep::Completed && algo.algo_step != FluerryStep::Failed {
+    fn run_fluery(mut algo: FlueryState, mut graph: StableGraph<Circle, Arrow>) -> FlueryStep {
+        algo.algo_step = FlueryStep::CheckingOutgoing;
+        while algo.algo_step != FlueryStep::Completed && algo.algo_step != FlueryStep::Failed {
             algo.step_algorithm(&mut graph);
         }
         algo.algo_step
@@ -40,13 +40,13 @@ mod test_fluery {
         let mut g = make_circle_graph(1);
         add_edge(&mut g, 0, 0);
 
-        let mut algo = FluerryState::new();
+        let mut algo = FlueryState::new();
         algo.graph_clone = g.clone();
         algo.current_node = Some(NodeIndex::new(0));
         algo.stack.push(NodeIndex::new(0));
 
-        let result = run_fluerry(algo, g);
-        assert_eq!(result, FluerryStep::Completed);
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Completed);
     }
 
     /// Примитив 2: треугольник 0→1→2→0
@@ -57,13 +57,13 @@ mod test_fluery {
         add_edge(&mut g, 1, 2);
         add_edge(&mut g, 2, 0);
 
-        let mut algo = FluerryState::new();
+        let mut algo = FlueryState::new();
         algo.graph_clone = g.clone();
         algo.current_node = Some(NodeIndex::new(0));
         algo.stack.push(NodeIndex::new(0));
 
-        let result = run_fluerry(algo, g);
-        assert_eq!(result, FluerryStep::Completed);
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Completed);
     }
 
     /// Контрпример: 0→3→2→1→0 и 0→2
@@ -76,13 +76,13 @@ mod test_fluery {
         add_edge(&mut g, 1, 0);
         add_edge(&mut g, 0, 2); // лишнее ребро
 
-        let mut algo = FluerryState::new();
+        let mut algo = FlueryState::new();
         algo.graph_clone = g.clone();
         algo.current_node = Some(NodeIndex::new(0));
         algo.stack.push(NodeIndex::new(0));
 
-        let result = run_fluerry(algo, g);
-        assert_eq!(result, FluerryStep::Failed, "Алгоритм должен завершиться с ошибкой");
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Failed, "Алгоритм должен завершиться с ошибкой");
     }
 
     /// Сложный: два цикла, соединённые мостом
@@ -97,13 +97,13 @@ mod test_fluery {
         add_edge(&mut g, 3, 4);
         add_edge(&mut g, 4, 0);
 
-        let mut algo = FluerryState::new();
+        let mut algo = FlueryState::new();
         algo.graph_clone = g.clone();
         algo.current_node = Some(NodeIndex::new(0));
         algo.stack.push(NodeIndex::new(0));
 
-        let result = run_fluerry(algo, g);
-        assert_eq!(result, FluerryStep::Completed);
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Completed);
     }
 
     /// Сложный 2: цикл с хвостом
@@ -116,13 +116,13 @@ mod test_fluery {
         add_edge(&mut g, 2, 0);
         add_edge(&mut g, 2, 3);
 
-        let mut algo = FluerryState::new();
+        let mut algo = FlueryState::new();
         algo.graph_clone = g.clone();
         algo.current_node = Some(NodeIndex::new(0));
         algo.stack.push(NodeIndex::new(0));
 
-        let result = run_fluerry(algo, g);
-        assert_eq!(result, FluerryStep::Failed);
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Failed);
     }
 
     /// Случайный эйлеров граф: 6 узлов, множество циклов
@@ -141,12 +141,12 @@ mod test_fluery {
             }
         }
 
-        let mut algo = FluerryState::new();
+        let mut algo = FlueryState::new();
         algo.graph_clone = g.clone();
         algo.current_node = Some(NodeIndex::new(0));
         algo.stack.push(NodeIndex::new(0));
 
-        let result = run_fluerry(algo, g);
-        assert_eq!(result, FluerryStep::Completed);
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Completed);
     }
 }

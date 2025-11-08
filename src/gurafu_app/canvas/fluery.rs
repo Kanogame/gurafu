@@ -2,13 +2,12 @@ use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef
 use std::collections::{HashSet, VecDeque};
 
 use crate::gurafu_app::canvas::{
-    CanvasMessage,
-    drawable::{arrow::Arrow, circle::Circle},
+    AlgorithmMessage, drawable::{arrow::Arrow, circle::Circle}
 };
 
-pub struct FluerryState {
+pub struct FlueryState {
     // Algorithm state
-    algo_step: FluerryStep,
+    algo_step: FlueryStep,
     stack: Vec<NodeIndex>,
     circuit: Vec<NodeIndex>,
     current_node: Option<NodeIndex>,
@@ -29,7 +28,7 @@ pub struct FluerryState {
 mod test_fluery;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum FluerryStep {
+pub enum FlueryStep {
     NotStarted,
     Initializing,
     CheckingOutgoing,
@@ -40,10 +39,12 @@ pub enum FluerryStep {
     Failed,
 }
 
-impl FluerryState {
+
+
+impl FlueryState {
     pub fn new() -> Self {
         Self {
-            algo_step: FluerryStep::NotStarted,
+            algo_step: FlueryStep::NotStarted,
             stack: Vec::new(),
             circuit: Vec::new(),
             current_node: None,
@@ -61,21 +62,21 @@ impl FluerryState {
     pub fn step_algorithm(
         &mut self,
         graph: &mut StableGraph<Circle, Arrow>,
-    ) -> Option<CanvasMessage> {
+    ) -> Option<AlgorithmMessage> {
         match self.algo_step {
-            FluerryStep::NotStarted => self.initialize_algorithm(graph),
-            FluerryStep::Initializing => self.find_start_node(graph),
-            FluerryStep::CheckingOutgoing => self.check_outgoing_edges(graph),
-            FluerryStep::ChoosingNext => self.choose_next_edge(graph),
-            FluerryStep::Advancing => self.advance_to_next(graph),
-            FluerryStep::Backtracking => self.backtrack_all(graph),
-            FluerryStep::Completed => {
+            FlueryStep::NotStarted => self.initialize_algorithm(graph),
+            FlueryStep::Initializing => self.find_start_node(graph),
+            FlueryStep::CheckingOutgoing => self.check_outgoing_edges(graph),
+            FlueryStep::ChoosingNext => self.choose_next_edge(graph),
+            FlueryStep::Advancing => self.advance_to_next(graph),
+            FlueryStep::Backtracking => self.backtrack_all(graph),
+            FlueryStep::Completed => {
                 self.step_explanation = "Algorithm completed successfully".into();
-                return Some(CanvasMessage::AlgorithmFinished(true));
+                return Some(AlgorithmMessage::AlgorithmSuccess(self.circuit.iter().map(|el| el.index()).collect()));
             }
-            FluerryStep::Failed => {
+            FlueryStep::Failed => {
                 self.step_explanation = "Algorithm failed (graph not Eulerian)".into();
-                return Some(CanvasMessage::AlgorithmFinished(false));
+                return Some(AlgorithmMessage::AlgorithmFail);
             }
         }
         None
@@ -89,7 +90,7 @@ impl FluerryState {
     fn find_start_node(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
     // === 1️⃣ Проверка эйлеровости графа ===
     if !Self::is_eulerian_directed(&self.graph_clone) {
-        self.algo_step = FluerryStep::Failed;
+        self.algo_step = FlueryStep::Failed;
         self.step_explanation =
             "Graph is not Eulerian: not strongly connected or in/out degrees differ".into();
         return;
@@ -107,10 +108,10 @@ impl FluerryState {
         if let Some(node) = graph.node_weight_mut(start) {
             node.highlight_start();
         }
-        self.algo_step = FluerryStep::CheckingOutgoing;
+        self.algo_step = FlueryStep::CheckingOutgoing;
         self.step_explanation = format!("Starting from node {:?}", start);
     } else {
-        self.algo_step = FluerryStep::Failed;
+        self.algo_step = FlueryStep::Failed;
         self.step_explanation = "No start node found".into();
     }
 }
@@ -143,7 +144,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
         let cur = match self.current_node {
             Some(v) => v,
             None => {
-                self.algo_step = FluerryStep::Failed;
+                self.algo_step = FlueryStep::Failed;
                 return;
             }
         };
@@ -156,7 +157,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
         self.current_outgoing = outgoing;
 
         if self.current_outgoing.is_empty() {
-            self.algo_step = FluerryStep::Backtracking;
+            self.algo_step = FlueryStep::Backtracking;
             return;
         }
 
@@ -165,12 +166,12 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
             graph.edge_weight_mut(eid).unwrap().highlight_selected();
             graph.node_weight_mut(next).unwrap().highlight_next();
             self.next_candidate = Some(next);
-            self.algo_step = FluerryStep::Advancing;
+            self.algo_step = FlueryStep::Advancing;
             return;
         }
 
         self.current_idx = 0;
-        self.algo_step = FluerryStep::ChoosingNext;
+        self.algo_step = FlueryStep::ChoosingNext;
     }
 
     fn choose_next_edge(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
@@ -179,7 +180,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
             let (next, eid) = self.current_outgoing[0];
             self.next_candidate = Some(next);
             graph.edge_weight_mut(eid).unwrap().highlight_selected();
-            self.algo_step = FluerryStep::Advancing;
+            self.algo_step = FlueryStep::Advancing;
             return;
         }
 
@@ -192,7 +193,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
         } else {
             self.next_candidate = Some(candidate);
             graph.edge_weight_mut(eid).unwrap().highlight_selected();
-            self.algo_step = FluerryStep::Advancing;
+            self.algo_step = FlueryStep::Advancing;
         }
     }
 
@@ -216,7 +217,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
         self.current_node = Some(next);
         self.next_candidate = None;
         self.current_outgoing.clear();
-        self.algo_step = FluerryStep::CheckingOutgoing;
+        self.algo_step = FlueryStep::CheckingOutgoing;
     }
 
     fn backtrack_all(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
@@ -233,10 +234,10 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
             && self.circuit.len() == total_edges + 1;
 
         if ok {
-            self.algo_step = FluerryStep::Completed;
+            self.algo_step = FlueryStep::Completed;
             self.step_explanation = format!("Eulerian cycle found with {} edges", total_edges);
         } else {
-            self.algo_step = FluerryStep::Failed;
+            self.algo_step = FlueryStep::Failed;
             self.step_explanation = format!(
                 "Incomplete circuit: edges_remaining={}, start/end mismatch or skipped edge",
                 self.graph_clone.edge_count()
@@ -287,7 +288,7 @@ fn is_eulerian_directed(graph: &StableGraph<Circle, Arrow>) -> bool {
 
     pub fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
         self.graph_clone = graph.clone();
-        self.algo_step = FluerryStep::Initializing;
+        self.algo_step = FlueryStep::Initializing;
         self.stack.clear();
         self.circuit.clear();
         self.current_node = None;

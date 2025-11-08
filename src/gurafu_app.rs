@@ -1,4 +1,3 @@
-use core::fmt;
 use std::fmt::Debug;
 
 use iced::Length::Fill;
@@ -11,7 +10,7 @@ use petgraph::prelude::StableGraph;
 use rfd::AsyncFileDialog;
 use serde::{Deserialize, Serialize};
 
-use crate::gurafu_app::canvas::CanvasSerializable;
+use crate::gurafu_app::canvas::{AlgorithmMessage, CanvasSerializable};
 use crate::gurafu_app::file::FileMessage;
 use crate::gurafu_app::message_box::MessageBoxMessage;
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
@@ -124,7 +123,7 @@ impl GurafuApplication {
             GurafuMessage::File(message) => match message {
                 FileMessage::OpenFile => {
                     return Task::future(async {
-                        let file = rfd::AsyncFileDialog::new()
+                        let file = AsyncFileDialog::new()
                             .add_filter("json", &["json"])
                             .pick_file()
                             .await;
@@ -180,12 +179,14 @@ impl GurafuApplication {
                 }
                 PlayerMessage::NextStep => match state.canvas.step_algorithm() {
                     Some(mes) => match mes {
-                        CanvasMessage::AlgorithmFinished(res) => {
-                            state.open_modal_after_algo(res);
+                        AlgorithmMessage::AlgorithmSuccess(res) => {
+                            state.open_modal_algo_success(res);
                         }
-                        _ => {}
+                        AlgorithmMessage::AlgorithmFail => {
+                            state.open_modal_algo_fail();
+                        }
                     },
-                    _ => {}
+                    None => {}
                 },
                 PlayerMessage::SliderValueChanged(val) => {
                     state.player.set_slider_value(val);
@@ -193,12 +194,14 @@ impl GurafuApplication {
             },
             GurafuMessage::AlgorithmTick => match state.canvas.step_algorithm() {
                 Some(mes) => match mes {
-                    CanvasMessage::AlgorithmFinished(res) => {
-                        state.open_modal_after_algo(res);
-                    }
-                    _ => {}
+                    AlgorithmMessage::AlgorithmSuccess(res) => {
+                        state.open_modal_algo_success(res);
+                    },
+                    AlgorithmMessage::AlgorithmFail => {
+                            state.open_modal_algo_fail();
+                        },
                 },
-                _ => {}
+                None => {}
             },
             GurafuMessage::CloseModal => {
                 state.modal_content = ModalState::Closed;
@@ -276,17 +279,27 @@ impl GurafuApplication {
         }
     }
 
-    fn open_modal_after_algo(&mut self, circuit_found: bool) {
+    fn open_modal_algo_fail(&mut self) {
         self.modal_content = ModalState::AlgorithmEnded;
         self.player.playing = false;
         self.message_box.header_text = "Результаты работы алгоритма".to_string();
-        if circuit_found {
-            self.message_box.message_text =
-                "Алгоритм выполнен успешно, Эйлеров цикл найден".to_string();
-        } else {
-            self.message_box.message_text =
-                "Алгоритм завершился, Эйлеров цикл не найден".to_string();
-        }
+ 
+        self.message_box.message_text =
+            "Алгоритм завершился, Эйлеров цикл не найден".to_string();
+    }
+
+    fn open_modal_algo_success(&mut self, circuit: Vec<usize>) {
+        self.modal_content = ModalState::AlgorithmEnded;
+        self.player.playing = false;
+        self.message_box.header_text = "Результаты работы алгоритма".to_string();
+        self.message_box.message_text = format!("Алгоритм выполнен успешно, Эйлеров цикл: {}", 
+            circuit
+                .iter()
+                .map(|el| el.to_string())
+                .collect::<Vec<String>>()
+                .join(" -> ")
+        );
+       
     }
 
     fn open_modal_about(&mut self) {

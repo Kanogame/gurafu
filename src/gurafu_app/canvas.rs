@@ -19,7 +19,7 @@ use crate::gurafu_app::{
     canvas::{
         canvas_frame::CanvasFrame,
         drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle},
-        fluerry::FluerryState,
+        fluery::{FlueryState},
         grid::Grid,
     },
     toolbar::ToolbarOptions,
@@ -28,7 +28,7 @@ use crate::gurafu_app::{
 mod camera;
 mod canvas_frame;
 mod drawable;
-mod fluerry;
+mod fluery;
 mod grid;
 mod helpers;
 // just zoom, pan and interaction state
@@ -42,7 +42,7 @@ pub struct CanvasState {
     pub grid: Grid,
 
     // algo
-    algo: FluerryState,
+    algo: FlueryState,
 
     // connection
     is_connecting: bool,
@@ -61,8 +61,11 @@ pub enum CanvasMessage {
 
     // connect elements
     HandleConnection(Point),
+}
 
-    AlgorithmFinished(bool),
+pub enum AlgorithmMessage {
+    AlgorithmSuccess(Vec<usize>),
+    AlgorithmFail,
 }
 
 impl canvas::Program<CanvasMessage> for CanvasState {
@@ -202,7 +205,7 @@ impl CanvasState {
             graph: StableGraph::new(),
             grid: Grid::new(),
 
-            algo: FluerryState::new(),
+            algo: FlueryState::new(),
 
             is_connecting: false,
             connection_start: Point { x: 0_f32, y: 0_f32 },
@@ -323,7 +326,7 @@ impl CanvasState {
         widget::canvas(state).into()
     }
 
-    pub fn step_algorithm(&mut self) -> Option<CanvasMessage> {
+    pub fn step_algorithm(&mut self) -> Option<AlgorithmMessage> {
         return self.algo.step_algorithm(&mut self.graph);
     }
 
