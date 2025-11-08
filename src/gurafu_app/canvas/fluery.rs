@@ -5,6 +5,7 @@ use crate::gurafu_app::canvas::{
     AlgorithmMessage, drawable::{arrow::Arrow, circle::Circle}
 };
 
+#[derive(Clone)]
 pub struct FlueryState {
     // Algorithm state
     algo_step: FlueryStep,

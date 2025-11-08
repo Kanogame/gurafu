@@ -13,6 +13,7 @@ use petgraph::{
     prelude::StableGraph,
     visit::{EdgeRef, IntoEdgeReferences, IntoNodeReferences},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::{
     Node,
@@ -35,6 +36,7 @@ mod helpers;
 mod interactions;
 
 
+#[derive(Clone)]
 pub struct CanvasState {
     pub toolbar_state: ToolbarOptions,
     //canvas_cache: Cache,
@@ -335,6 +337,7 @@ impl CanvasState {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct CanvasSerializable {
     pub graph: StableGraph<Node, u32>,
 }
@@ -345,7 +348,10 @@ impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
         let mut node_map: HashMap<NodeIndex, (NodeIndex, &Node)> = HashMap::new();
 
         self.graph.node_references().for_each(|(idx, node)| {
-            node_map.insert(idx, (res.add_node(node.into_cricle()), node));
+            let new_idx = res.add_node(node.into_cricle());
+            res.node_weight_mut(new_idx).unwrap().id = new_idx.index();
+
+            node_map.insert(idx, (idx, node));
         });
 
         self.graph.edge_references().for_each(|eref| {

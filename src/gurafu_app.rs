@@ -7,7 +7,7 @@ use iced::{Font, Task, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
 use petgraph::prelude::StableGraph;
-use rfd::AsyncFileDialog;
+use rfd::{AsyncFileDialog, FileHandle};
 use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::canvas::{AlgorithmMessage, CanvasSerializable};
@@ -52,9 +52,12 @@ enum GurafuMessage {
     MessageBox(message_box::MessageBoxMessage),
 
     FileOpened(Result<String, String>),
+    FileSave(FileHandle),
+    FileSaved,
     CloseModal,
     OpenInfo,
     AlgorithmTick,
+
 }
 
 enum ModalState {
@@ -138,16 +141,51 @@ impl GurafuApplication {
                         }
                     });
                 }
-                FileMessage::SaveFile => {}
+                FileMessage::SaveFile => {
+                    return Task::future(async {
+                        let file = AsyncFileDialog::new()
+                            .add_filter("json", &["json"])
+                            .save_file()
+                            .await;
+
+                        if let Some(file) = file {
+                            GurafuMessage::FileSave(file)
+                        } else {
+                            GurafuMessage::FileOpened(Err("No file selected".to_string()))
+                        }
+                    });
+                }
             },
             GurafuMessage::FileOpened(res) => match res {
                 Ok(content) => {
-                    let graph = serde_json::from_str::<StableGraph<Node, u32>>(&content).unwrap();
+                    println!("{}", content);
 
-                    state.canvas.graph = (CanvasSerializable { graph: graph }).into();
+                    let graph = serde_json::from_str::<CanvasSerializable>(&content).unwrap();
+
+                    state.canvas.graph = graph.into();
                 }
                 _ => {}
             },
+            GurafuMessage::FileSaved => {
+                println!("file saving finished");
+            }
+            GurafuMessage::FileSave(file) => {
+                println!("file saving begins");
+
+                let serializable: CanvasSerializable = state.canvas.clone().into();
+
+                match serde_json::to_string(&serializable) {
+                    Ok(json) => {
+                        return Task::future(async move {
+                            let _ = file.write(json.as_bytes()).await;
+                            return GurafuMessage::FileSaved;
+                        });
+                    }
+                    Err(er) => {
+                        panic!("{}", er);
+                    } 
+                }
+            }
             GurafuMessage::Canvas(message) => match message {
                 CanvasMessage::CreateNodeOnGrid(world) => {
                     state.canvas.create_new_node_on_grid(world);
@@ -158,7 +196,6 @@ impl GurafuApplication {
                 CanvasMessage::HandleConnection(world) => {
                     state.canvas.handle_connection(world);
                 }
-                _ => {}
             },
             GurafuMessage::OpenInfo => {
                 state.open_modal_about();
