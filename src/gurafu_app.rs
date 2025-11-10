@@ -1,9 +1,12 @@
 use std::fmt::Debug;
+use std::sync::Arc;
 
-use iced::Length::Fill;
+use iced::Length::{self, Fill};
+use iced::theme::palette::Extended;
+use iced::theme::{Custom, Palette};
 use iced::time::{self};
-use iced::widget::{button, column, row, svg, text};
-use iced::{Font, Task, font};
+use iced::widget::{button, column, container, row, svg, text};
+use iced::{Color, Font, Task, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
 use rfd::{AsyncFileDialog, FileHandle};
@@ -93,16 +96,17 @@ impl GurafuApplication {
             ratio: 0.2,
             a: Box::new(pane_grid::Configuration::Split {
                 axis: pane_grid::Axis::Horizontal,
-                ratio: 0.8,
-                a: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
-                b: Box::new(pane_grid::Configuration::Pane(Pane::File)),
-            }),
-            b: Box::new(pane_grid::Configuration::Split {
-                axis: pane_grid::Axis::Horizontal,
-                ratio: 0.1,
+                ratio: 0.33,
                 a: Box::new(pane_grid::Configuration::Pane(Pane::Toolbar)),
-                b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)),
+                b: Box::new(pane_grid::Configuration::Split {
+                axis: pane_grid::Axis::Horizontal,
+                ratio: 0.66,
+                a: Box::new(pane_grid::Configuration::Pane(Pane::File)),
+                b: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
+
+                }),
             }),
+            b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)),
         });
 
         GurafuApplication {
@@ -291,9 +295,20 @@ impl GurafuApplication {
                 })
                 .style(styles::pane_grid_style),
                 Pane::Canvas => pane_grid::Content::new({
-                    canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas)
+                    container(
+                        container(
+                            canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas))
+                        .style(styles::pane_grid_style)
+                        .center(Length::Fill)
+                        )
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                    .style(styles::canvas_container_style)
+                    .padding(8)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
                 })
-                .style(styles::pane_grid_style),
+                .style(styles::pane_grid_canvas_style),
                 Pane::Player => pane_grid::Content::new({
                     player::PlayerState::view(&state.player).map(GurafuMessage::Player)
                 })
@@ -366,7 +381,15 @@ impl GurafuApplication {
     }
 
     fn theme(&self) -> iced::Theme {
-        iced::Theme::Light
+        let c = Custom::new("Gurafu_theme".to_string(), Palette {
+                    primary: Color::from_rgb8(74, 144, 216),
+                    background: Color::from_rgb8(232, 232, 232),
+                    ..iced::Theme::Light.palette()
+                });
+
+        iced::Theme::Custom(Arc::new(
+            c
+        ))
     }
 }
 

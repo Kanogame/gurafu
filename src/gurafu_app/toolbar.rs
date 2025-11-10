@@ -1,4 +1,4 @@
-use iced::widget::{Row, column, text};
+use iced::widget::{Column, Row, column, text};
 
 use crate::gurafu_app::svg_button::svg_button;
 
@@ -59,7 +59,7 @@ impl ToolbarState {
 
     pub fn view(state: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
         column![
-            Row::with_children(ToolbarOptions::VALUES.map(|el| {
+            Column::with_children(ToolbarOptions::VALUES.map(|el| {
                 svg_button(el.name().into(), el.icon().into(), el.to_message())
             }))
             .spacing(15)
