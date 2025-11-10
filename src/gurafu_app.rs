@@ -23,8 +23,8 @@ mod message_box;
 mod modal;
 mod player;
 mod styles;
-mod toolbar;
 mod svg_button;
+mod toolbar;
 
 pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
@@ -59,7 +59,7 @@ enum GurafuMessage {
     CloseModal,
     OpenInfo,
     AlgorithmTick,
-    
+
     Error(String),
 }
 
@@ -99,11 +99,10 @@ impl GurafuApplication {
                 ratio: 0.33,
                 a: Box::new(pane_grid::Configuration::Pane(Pane::Toolbar)),
                 b: Box::new(pane_grid::Configuration::Split {
-                axis: pane_grid::Axis::Horizontal,
-                ratio: 0.66,
-                a: Box::new(pane_grid::Configuration::Pane(Pane::File)),
-                b: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
-
+                    axis: pane_grid::Axis::Horizontal,
+                    ratio: 0.66,
+                    a: Box::new(pane_grid::Configuration::Pane(Pane::File)),
+                    b: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
                 }),
             }),
             b: Box::new(pane_grid::Configuration::Pane(Pane::Canvas)),
@@ -157,22 +156,23 @@ impl GurafuApplication {
                             GurafuMessage::FileOpened(Err("Не выбран файл".to_string()))
                         }
                     });
-                },
+                }
                 FileMessage::NewFile => {
                     state.load_graph(CanvasSerializable::new());
                 }
             },
             GurafuMessage::FileOpened(res) => match res {
-                Ok(content) => {
-                    match serde_json::from_str::<CanvasSerializable>(&content) {
-                        Ok(graph) => {
-                            state.load_graph(graph);
-                        }
-                        Err(er) => {
-                            state.open_modal_generic_error(format!("Неверное форматирование файла графа, ошибка: {}", er));
-                        }
+                Ok(content) => match serde_json::from_str::<CanvasSerializable>(&content) {
+                    Ok(graph) => {
+                        state.load_graph(graph);
                     }
-                }
+                    Err(er) => {
+                        state.open_modal_generic_error(format!(
+                            "Неверное форматирование файла графа, ошибка: {}",
+                            er
+                        ));
+                    }
+                },
                 _ => {}
             },
             GurafuMessage::FileSave(file) => {
@@ -183,15 +183,21 @@ impl GurafuApplication {
                         return Task::future(async move {
                             let res = file.write(json.as_bytes()).await;
                             if res.is_err() {
-                                return GurafuMessage::Error(format!("Не удалось записать файл, ошибка: {:?}", res.err()));
+                                return GurafuMessage::Error(format!(
+                                    "Не удалось записать файл, ошибка: {:?}",
+                                    res.err()
+                                ));
                             } else {
                                 return GurafuMessage::Error("".to_string());
                             }
                         });
                     }
                     Err(er) => {
-                        state.open_modal_generic_error(format!("Не удалось записать файл, ошибка: {}", er));
-                    } 
+                        state.open_modal_generic_error(format!(
+                            "Не удалось записать файл, ошибка: {}",
+                            er
+                        ));
+                    }
                 }
             }
             GurafuMessage::Canvas(message) => match message {
@@ -241,10 +247,10 @@ impl GurafuApplication {
                 Some(mes) => match mes {
                     AlgorithmMessage::AlgorithmSuccess(res) => {
                         state.open_modal_algo_success(res);
-                    },
+                    }
                     AlgorithmMessage::AlgorithmFail => {
-                            state.open_modal_algo_fail();
-                        },
+                        state.open_modal_algo_fail();
+                    }
                 },
                 None => {}
             },
@@ -297,13 +303,12 @@ impl GurafuApplication {
                 Pane::Canvas => pane_grid::Content::new({
                     container(
                         container(
-                            canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas))
-                        .style(styles::pane_grid_style)
-                        .center(Length::Fill)
+                            canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas),
                         )
-                        .width(Length::Fill)
+                        .style(styles::canvas_container_style)
                         .height(Length::Fill)
-                    .style(styles::canvas_container_style)
+                        .width(Length::Fill),
+                    )
                     .padding(8)
                     .width(Length::Fill)
                     .height(Length::Fill)
@@ -337,16 +342,16 @@ impl GurafuApplication {
         self.modal_content = ModalState::Open;
         self.player.playing = false;
         self.message_box.header_text = "Результаты работы алгоритма".to_string();
- 
-        self.message_box.message_text =
-            "Алгоритм завершился, Эйлеров цикл не найден".to_string();
+
+        self.message_box.message_text = "Алгоритм завершился, Эйлеров цикл не найден".to_string();
     }
 
     fn open_modal_algo_success(&mut self, circuit: Vec<usize>) {
         self.modal_content = ModalState::Open;
         self.player.playing = false;
         self.message_box.header_text = "Результаты работы алгоритма".to_string();
-        self.message_box.message_text = format!("Алгоритм выполнен успешно, Эйлеров цикл: {}", 
+        self.message_box.message_text = format!(
+            "Алгоритм выполнен успешно, Эйлеров цикл: {}",
             circuit
                 .iter()
                 .map(|el| el.to_string())
@@ -355,7 +360,6 @@ impl GurafuApplication {
         );
 
         self.canvas.reset_algorithm();
-       
     }
 
     fn open_modal_generic_error(&mut self, error_text: String) {
@@ -363,7 +367,7 @@ impl GurafuApplication {
         self.player.playing = false;
 
         self.message_box.header_text = "Произошла ошибка".to_string();
-        self.message_box.message_text =error_text;
+        self.message_box.message_text = error_text;
     }
 
     fn open_modal_about(&mut self) {
@@ -381,15 +385,16 @@ impl GurafuApplication {
     }
 
     fn theme(&self) -> iced::Theme {
-        let c = Custom::new("Gurafu_theme".to_string(), Palette {
-                    primary: Color::from_rgb8(74, 144, 216),
-                    background: Color::from_rgb8(232, 232, 232),
-                    ..iced::Theme::Light.palette()
-                });
+        let c = Custom::new(
+            "Gurafu_theme".to_string(),
+            Palette {
+                primary: Color::from_rgb8(74, 144, 216),
+                background: Color::from_rgb8(232, 232, 232),
+                ..iced::Theme::Light.palette()
+            },
+        );
 
-        iced::Theme::Custom(Arc::new(
-            c
-        ))
+        iced::Theme::Custom(Arc::new(c))
     }
 }
 

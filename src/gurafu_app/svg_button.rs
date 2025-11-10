@@ -1,5 +1,5 @@
 use iced::{
-    Element,
+    Color, Element,
     Length::Shrink,
     widget::{button, center, row, svg, text},
 };
@@ -17,7 +17,7 @@ where
     return button(center(
         row![
             svg(svg_path).style(styles::button_svg_style).width(Shrink),
-            text(button_text)
+            text(button_text).color(Color::from_rgb8(255, 255, 255)),
         ]
         .spacing(10),
     ))

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use iced::{
-    Color, Point, Rectangle, Renderer, Theme, Vector,
+    Color, Length, Point, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
     widget::{
         self,
@@ -20,7 +20,7 @@ use crate::gurafu_app::{
     canvas::{
         canvas_frame::CanvasFrame,
         drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle},
-        fluery::{FlueryState},
+        fluery::FlueryState,
         grid::Grid,
     },
     toolbar::ToolbarOptions,
@@ -34,7 +34,6 @@ mod grid;
 mod helpers;
 // just zoom, pan and interaction state
 mod interactions;
-
 
 #[derive(Clone)]
 pub struct CanvasState {
@@ -325,7 +324,10 @@ impl CanvasState {
     }
 
     pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
-        widget::canvas(state).into()
+        widget::canvas(state)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     pub fn step_algorithm(&mut self) -> Option<AlgorithmMessage> {
@@ -345,7 +347,7 @@ pub struct CanvasSerializable {
 impl CanvasSerializable {
     pub fn new() -> Self {
         return CanvasSerializable {
-            graph: StableGraph::new()
+            graph: StableGraph::new(),
         };
     }
 }

@@ -1,4 +1,7 @@
-use iced::widget::{Column, Row, column, text};
+use iced::{
+    Font, font,
+    widget::{Column, Row, column, text},
+};
 
 use crate::gurafu_app::svg_button::svg_button;
 
@@ -59,15 +62,20 @@ impl ToolbarState {
 
     pub fn view(state: &ToolbarState) -> iced::Element<'_, ToolbarMessage> {
         column![
-            Column::with_children(ToolbarOptions::VALUES.map(|el| {
-                svg_button(el.name().into(), el.icon().into(), el.to_message())
-            }))
-            .spacing(15)
-            .padding([5, 10]),
+            text("Граф").size(16).font(Font {
+                weight: font::Weight::Bold,
+                ..Font::default()
+            }),
             text("Выбранный инструмент: ".to_string() + state.state.name()),
+            Column::with_children(
+                ToolbarOptions::VALUES
+                    .map(|el| { svg_button(el.name().into(), el.icon().into(), el.to_message()) })
+            )
+            .spacing(15)
+            .padding([5, 0]),
         ]
-        .spacing(10)
-        .padding([5, 0])
+        .spacing(5)
+        .padding([5, 10])
         .into()
     }
 }

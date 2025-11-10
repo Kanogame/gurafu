@@ -1,8 +1,9 @@
 use iced::{
-    Border, Color, Shadow, Theme, Vector, color, widget::{
+    Border, Color, Shadow, Theme, Vector, color,
+    widget::{
         container,
         svg::{self, Status},
-    }
+    },
 };
 
 pub fn pane_grid_style(theme: &Theme) -> container::Style {
@@ -37,16 +38,16 @@ pub fn canvas_container_style(theme: &Theme) -> container::Style {
     let palette = theme.extended_palette();
 
     container::Style {
-        background: Some(iced::Background::Color(Color::from_rgb8(232, 232, 232))),
+        background: Some(iced::Background::Color(Color::from_rgb8(248, 248, 248))),
         border: Border {
             width: 1.0,
-            radius: 4.0.into(),
+            radius: 8.0.into(),
             color: palette.background.weak.color,
         },
         shadow: Shadow {
             color: Color::from_rgba8(0, 0, 0, 0.25),
-            offset: Vector{x: 0.0, y: 0.0},
-            blur_radius: 20.0
+            offset: Vector { x: 0.0, y: 0.0 },
+            blur_radius: 20.0,
         },
         ..container::Style::default()
     }

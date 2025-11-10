@@ -39,18 +39,12 @@ impl PlayerState {
                 weight: font::Weight::Bold,
                 ..Font::default()
             }),
+            text(format!("Скорость: {}x", state.slider_text.clone())),
             slider(
                 0.0..=4.0,
                 state.slider_value,
                 PlayerMessage::SliderValueChanged
             ),
-            text(format!("Скорость: {}X", state.slider_text.clone()))
-                .size(16)
-                .font(Font {
-                    weight: font::Weight::Bold,
-                    ..Font::default()
-                })
-                .align_y(Alignment::Center),
             row![
                 button(if !state.playing {
                     svg("assets/icons/play.svg").style(styles::button_svg_style)
@@ -65,8 +59,8 @@ impl PlayerState {
             ]
             .spacing(5)
         ]
-        .padding(5)
         .spacing(5)
+        .padding([5, 10])
         .into()
     }
 
