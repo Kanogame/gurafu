@@ -20,12 +20,6 @@ pub struct Arrow {
     pub color: Color,
 }
 
-impl fmt::Debug for Arrow {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        return Ok(());
-    }
-}
-
 impl DrawablePath for Arrow {
     fn into_path(&self, camera: &Camera) -> Path {
         let mut screen_start = camera.world_to_screen(self.start);
@@ -79,18 +73,27 @@ impl DrawablePath for Arrow {
         let left_base = base_center + base_offset;
         let right_base = base_center - base_offset;
 
-        canvas::Path::new(move |p| {
-            p.move_to(points[0]);
-            p.line_to(points[1]);
-            p.line_to(points[2]);
-            p.line_to(points[3]);
-            p.close();
+        if v.length() < self.arrowhead_size {
+            canvas::Path::new(move |p| {
+                p.move_to(tip);
+                p.line_to(left_base);
+                p.line_to(right_base);
+                p.close();
+            })
+        } else {
+            canvas::Path::new(move |p| {
+                p.move_to(points[0]);
+                p.line_to(points[1]);
+                p.line_to(points[2]);
+                p.line_to(points[3]);
+                p.close();
 
-            p.move_to(tip);
-            p.line_to(left_base);
-            p.line_to(right_base);
-            p.close();
-        })
+                p.move_to(tip);
+                p.line_to(left_base);
+                p.line_to(right_base);
+                p.close();
+            })
+        }
     }
 
     fn get_path_color(&self) -> Color {

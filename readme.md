@@ -7,7 +7,6 @@ TODO:
 3. Add current node highlighting
 5. Fix bridge highlighting
 6. Fix modal window reseting camera position
-7. Fix rendering of arrows
 8. Fix rendering order (text is above arrows)
 9. Finally zoom to center instead of top left corner
 
