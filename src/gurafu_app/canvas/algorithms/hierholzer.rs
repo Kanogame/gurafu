@@ -1,6 +1,6 @@
 use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef};
 
-use crate::gurafu_app::canvas::{drawable::{arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}
+use crate::gurafu_app::canvas::{drawable::{link::Link, node::Node}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}
 };
 
 mod test_hierholzer;
@@ -13,7 +13,7 @@ pub struct HierholzerState {
     stack: Vec<NodeIndex>,          // стек текущего пути
     circuit: Vec<NodeIndex>,        // итоговый цикл (будет приведён в прямой порядок при завершении)
     current_node: Option<NodeIndex>,// текущая вершина
-    graph_clone: StableGraph<Circle, Arrow>, // рабочая копия графа (в ней удаляются рёбра)
+    graph_clone: StableGraph<Node, Link>, // рабочая копия графа (в ней удаляются рёбра)
 
     // Визуализационные поля
     current_outgoing: Vec<(NodeIndex, petgraph::graph::EdgeIndex)>, // (цель, edge_id)
@@ -46,7 +46,7 @@ enum HierholzerStep {
 impl GraphAlgorithm for HierholzerState {
     fn step_algorithm(
         &mut self,
-        graph: &mut StableGraph<Circle, Arrow>,
+        graph: &mut StableGraph<Node, Link>,
     ) -> Option<AlgorithmMessage> {
         let cur_state = self.algo_step;
 
@@ -59,6 +59,7 @@ impl GraphAlgorithm for HierholzerState {
             HierholzerStep::Backtracking => self.backtrack_all(graph),
             HierholzerStep::Completed => {
                 self.step_explanation = "Algorithm completed successfully".into();
+                self.reset_algorithm(graph);
 
                 // На выходе возвращаем circuit в прямом порядке (0->1->2->...)
                 return Some(AlgorithmMessage::AlgorithmSuccess(
@@ -73,6 +74,8 @@ impl GraphAlgorithm for HierholzerState {
                 ));
             }
             HierholzerStep::Failed => {
+                self.reset_algorithm(graph);
+
                 self.step_explanation = "Algorithm failed (graph not Eulerian)".into();
                 return Some(AlgorithmMessage::AlgorithmFail("Алгоритм завершился, Эйлеров цикл не найден".to_string()));
             }
@@ -87,9 +90,9 @@ impl GraphAlgorithm for HierholzerState {
         None
     }
 
-    fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn reset_algorithm(&mut self, graph: &mut StableGraph<Node, Link>) {
         self.graph_clone = graph.clone();
-        self.algo_step = HierholzerStep::Initializing;
+        self.algo_step = HierholzerStep::NotStarted;
         self.stack.clear();
         self.circuit.clear();
         self.current_node = None;
@@ -130,7 +133,7 @@ impl GraphAlgorithm for HierholzerState {
 
 impl HierholzerState {
     /// Инициализация: клонируем граф, считаем исходное число рёбер, очищаем состояние
-    fn initialize_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn initialize_algorithm(&mut self, graph: &mut StableGraph<Node, Link>) {
         self.reset_algorithm(graph);
 
         // === ДОБАВЛЕНО: Проверка Эйлеровости по степеням (для направленного графа)
@@ -153,10 +156,11 @@ impl HierholzerState {
 
         self.step_explanation =
             "Initializing Hierholzer - cloned graph and cleared state".to_string();
+        self.algo_step = HierholzerStep::Initializing
     }
 
     /// Находим стартовую вершину (любую с исходящими рёбрами)
-    fn find_start_node(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn find_start_node(&mut self, graph: &mut StableGraph<Node, Link>) {
         // Если graph_clone ещё пустой (reset уже клонировал), ищем вершину с исходящими ребрами
         self.current_node = self.graph_clone.node_indices().find(|&node| {
             self.graph_clone
@@ -190,7 +194,7 @@ impl HierholzerState {
     }
 
     /// Проверяем исходящие рёбра у current_node, готовим варианты
-    fn check_outgoing_edges(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn check_outgoing_edges(&mut self, graph: &mut StableGraph<Node, Link>) {
         // очистка временных подсветок перед новым шагом
         self.clear_temporary_highlights(graph);
 
@@ -248,7 +252,7 @@ impl HierholzerState {
     }
 
     /// Выбор следующего ребра (у нас детерминированный — первый)
-    fn choose_next_edge(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn choose_next_edge(&mut self, graph: &mut StableGraph<Node, Link>) {
         // Если вдруг индекс выходит за диапазон — используем fallback на первый
         if self.current_idx >= self.current_outgoing.len() {
             if let Some((node, edge_id)) = self.current_outgoing.get(0).cloned() {
@@ -288,7 +292,7 @@ impl HierholzerState {
     }
 
     /// Выполнить переход по выбранному ребру: удалить ребро в clone, подсветить путь, двигаться дальше
-    fn advance_to_next(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn advance_to_next(&mut self, graph: &mut StableGraph<Node, Link>) {
         // очистить временные подсветки
         self.clear_temporary_highlights(graph);
 
@@ -362,7 +366,7 @@ impl HierholzerState {
     ///  - если стек не пуст — продолжаем traversal из вершины на вершине стека;
     ///  - если стек пуст, но рёбра остались — ищем в circuit вершину, из которой можно продолжить (merge/rotate);
     ///  - иначе — ошибка.
-    fn backtrack_all(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn backtrack_all(&mut self, graph: &mut StableGraph<Node, Link>) {
         // очистка временных подсветок
         self.clear_temporary_highlights(graph);
 
@@ -515,7 +519,7 @@ impl HierholzerState {
     }
 
     /// Очистка временных подсветок кандидатов/ребер (но не убираем подсветки пройденного пути)
-    fn clear_temporary_highlights(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn clear_temporary_highlights(&mut self, graph: &mut StableGraph<Node, Link>) {
         // Очистка подсветки вершин-кандидатов
         for &node in &self.highlighted_candidates {
             if let Some(node_weight) = graph.node_weight_mut(node) {
@@ -539,7 +543,7 @@ impl HierholzerState {
     }
 
     /// Полная очистка всех подсветок (reset)
-    fn clear_highlights(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+    fn clear_highlights(&mut self, graph: &mut StableGraph<Node, Link>) {
         for node in graph.node_weights_mut() {
             node.reset_highlight();
         }

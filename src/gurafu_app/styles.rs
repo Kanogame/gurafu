@@ -1,9 +1,10 @@
+use std::sync::Arc;
+
 use iced::{
-    Border, Color, Shadow, Theme, Vector, color,
-    widget::{
+    Border, Color, Shadow, Theme, Vector, color, theme::{Custom, Palette}, widget::{
         container,
         svg::{self, Status},
-    },
+    }
 };
 
 pub fn pane_grid_style(theme: &Theme) -> container::Style {
@@ -71,4 +72,17 @@ pub fn button_svg_style(_: &Theme, _: Status) -> svg::Style {
     svg::Style {
         color: Some(color!(0xffffff)),
     }
+}
+
+pub fn get_theme() -> Theme {
+    let c = Custom::new(
+            "Gurafu_theme".to_string(),
+            Palette {
+                primary: Color::from_rgb8(74, 144, 216),
+                background: Color::from_rgb8(232, 232, 232),
+                ..iced::Theme::Light.palette()
+            },
+        );
+
+        iced::Theme::Custom(Arc::new(c))
 }

@@ -1,6 +1,6 @@
 use petgraph::prelude::StableGraph;
 
-use crate::gurafu_app::canvas::drawable::{arrow::Arrow, circle::Circle};
+use crate::gurafu_app::canvas::drawable::{link::Link, node::Node};
 
 pub enum AlgorithmMessage {
     AlgorithmSuccess(String),
@@ -12,10 +12,10 @@ pub trait GraphAlgorithm {
 
     fn step_algorithm(
         &mut self,
-        graph: &mut StableGraph<Circle, Arrow>,
+        graph: &mut StableGraph<Node, Link>,
     ) -> Option<AlgorithmMessage>;
 
-    fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>);
+    fn reset_algorithm(&mut self, graph: &mut StableGraph<Node, Link>);
 }
 
 impl AlgorithmMessage {

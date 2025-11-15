@@ -1,7 +1,7 @@
 use iced::{Point, Size, mouse, widget::canvas};
 
 use crate::gurafu_app::{
-    canvas::{CanvasMessage, camera::Camera, grid::Grid, helpers},
+    canvas::{CanvasMessage, camera::{Camera, WorldPoint}, grid::{Grid, GridPoint}, helpers},
     toolbar::ToolbarOption,
 };
 
@@ -51,23 +51,23 @@ impl CanvasStateInternal {
         let start_on_grid = grid.to_grid_tl(camera_tl);
         let end_on_grid = grid.to_grid_tl(camera_br);
 
-        let mut x_offset = 0_f32;
-        let mut y_offset = 0_f32;
+        let mut x_offset = 0;
+        let mut y_offset = 0;
 
         while start_on_grid.x + x_offset <= end_on_grid.x {
             while start_on_grid.y + y_offset <= end_on_grid.y {
                 points.push(canvas::Path::circle(
-                    self.camera.world_to_screen(Point {
+                    self.camera.world_to_screen(GridPoint {
                         x: start_on_grid.x + x_offset,
                         y: start_on_grid.y + y_offset,
-                    }),
+                    }.into()),
                     2_f32 * (1_f32 / self.camera.scale),
                 ));
 
                 y_offset += grid.step_size;
             }
 
-            y_offset = 0_f32;
+            y_offset = 0;
             x_offset += grid.step_size;
         }
 
@@ -83,7 +83,7 @@ impl CanvasStateInternal {
         self.is_dragging = false;
     }
 
-    pub fn convert_screen_to_world(&self, screen: Point) -> Point {
+    pub fn convert_screen_to_world(&self, screen: Point) -> WorldPoint {
         self.camera.screen_to_world(screen)
     }
 

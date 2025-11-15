@@ -1,26 +1,23 @@
-use core::fmt;
 
 use iced::{
-    Color, Point,
+    Color,
     widget::canvas::{self, Path, path::lyon_path::geom::Vector},
 };
 
-use crate::gurafu_app::{
-    Node,
-    canvas::{camera::Camera, drawable::DrawablePath},
-};
+use crate::gurafu_app::canvas::{camera::{Camera, WorldPoint}, drawable::{DrawablePath, node::NodeSerializable}};
 
 #[derive(Clone, Default)]
-pub struct Arrow {
-    pub start: Point,
-    pub end: Point,
-    pub line_width: f32,
-    pub arrowhead_size: f32,
-    pub offset: f32,
-    pub color: Color,
+pub struct Link {
+    start: WorldPoint,
+    end: WorldPoint,
+    line_width: f32,
+    arrowhead_size: f32,
+    offset: f32,
+    color: Color,
 }
 
-impl DrawablePath for Arrow {
+
+impl DrawablePath for Link {
     fn into_path(&self, camera: &Camera) -> Path {
         let mut screen_start = camera.world_to_screen(self.start);
         let mut screen_end = camera.world_to_screen(self.end);
@@ -101,8 +98,19 @@ impl DrawablePath for Arrow {
     }
 }
 
-impl Arrow {
-    pub fn from_nodes(source: &Node, target: &Node) -> Self {
+impl Link {
+    pub fn from_world_points(source: WorldPoint, target: WorldPoint) -> Self {
+        Self {
+            start: source,
+            end: target,
+            line_width: 5.0,
+            arrowhead_size: 10.0,
+            offset: 30.0,
+            color: Color::from_rgb8(80, 80, 80),
+        }
+    }
+
+    pub fn from_nodes_serializable(source: &NodeSerializable, target: &NodeSerializable) -> Self {
         Self {
             start: source.into(),
             end: target.into(),

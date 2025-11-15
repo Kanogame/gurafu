@@ -1,7 +1,7 @@
 use iced::{Color, widget::canvas::{Path, Text}};
 
-pub mod arrow;
-pub mod circle;
+pub mod link;
+pub mod node;
 
 use crate::gurafu_app::canvas::camera::Camera;
 

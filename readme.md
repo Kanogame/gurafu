@@ -7,7 +7,6 @@ TODO:
 3. Add current node highlighting
 5. Fix bridge highlighting
 6. Fix modal window reseting camera position
-8. Fix rendering order (text is above arrows)
 9. Finally zoom to center instead of top left corner
 
 It can:
@@ -18,12 +17,6 @@ It can:
 6. Display algorithms step-by-step 
 
 roadmap:
-7. Refactor
-    - reconsider "drawable" interface
-      - substitute component naming
-      - possibly optimize drawing with cache
-    - reconsider graph & camera structs + impl
-      - possibly use default rust treats (into, ..)
 8. Bench & optimizations
     - test windows compilation
     - possibly rendering optimizations

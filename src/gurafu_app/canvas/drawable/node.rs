@@ -1,52 +1,52 @@
 use core::fmt;
 
-use iced::{Color, Font, Pixels, Point, Theme, alignment, widget::canvas::{Path, Text}};
-use crate::gurafu_app::{
-    Node,
-    canvas::{camera::Camera, drawable::{DrawablePath, DrawableText}},
+use crate::gurafu_app::{canvas::{
+    camera::{Camera, WorldPoint},
+    drawable::{DrawablePath, DrawableText},
+}, styles::get_theme};
+use iced::{
+    Color, Font, Pixels, alignment,
+    widget::canvas::{Path, Text},
 };
+use serde::{Deserialize, Serialize};
 
-impl Node {
-    pub fn into_cricle(&self) -> Circle {
-        Circle {
+impl Into<Node> for &NodeSerializable {
+    fn into(self) -> Node {
+        Node {
             id: 0,
-            center: Point {
-                x: self.x,
-                y: self.y,
-            },
+            center: self.position,
             radius: 30.0,
-            color: Theme::Dark.palette().primary,
+            color: get_theme().palette().primary,
         }
     }
 }
 
-impl Into<Point> for &Node {
-    fn into(self) -> Point {
-        Point {
-            x: self.x,
-            y: self.y,
-        }
+impl Into<WorldPoint> for &NodeSerializable {
+    fn into(self) -> WorldPoint {
+        self.position
     }
 }
 
-impl From<Point> for Node {
-    fn from(value: Point) -> Self {
-        Self {
-            x: value.x,
-            y: value.y,
-        }
+impl From<WorldPoint> for NodeSerializable {
+    fn from(value: WorldPoint) -> Self {
+        Self { position: value }
     }
 }
 
 #[derive(Clone, Default)]
-pub struct Circle {
+pub struct Node {
     pub id: usize,
-    pub center: Point,
+    pub center: WorldPoint,
     pub radius: f32,
     pub color: Color,
 }
 
-impl Circle {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct NodeSerializable {
+    position: WorldPoint,
+}
+
+impl Node {
     pub fn highlight_start(&mut self) {
         self.color = Color::from_rgb8(0, 255, 136);
     }
@@ -72,17 +72,17 @@ impl Circle {
     }
 
     pub fn reset_highlight(&mut self) {
-        self.color = Theme::Dark.palette().primary;
+        self.color = get_theme().palette().primary;
     }
 }
 
-impl fmt::Debug for Circle {
+impl fmt::Debug for Node {
     fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return Ok(());
     }
 }
 
-impl DrawablePath for Circle {
+impl DrawablePath for Node {
     fn into_path(&self, camera: &Camera) -> Path {
         Path::circle(
             camera.world_to_screen(self.center),
@@ -95,15 +95,15 @@ impl DrawablePath for Circle {
     }
 }
 
-impl DrawableText for Circle {
+impl DrawableText for Node {
     fn into_text(&self, camera: &Camera) -> Text {
         let font_size = 20.0;
 
         Text {
-            content: self.id.to_string(),  
+            content: self.id.to_string(),
             position: camera.world_to_screen(self.center),
-            color: Color::BLACK,  
-            size: Pixels::from(font_size / camera.scale),  
+            color: Color::BLACK,
+            size: Pixels::from(font_size / camera.scale),
             horizontal_alignment: alignment::Horizontal::Center,
             vertical_alignment: alignment::Vertical::Center,
             font: Font {

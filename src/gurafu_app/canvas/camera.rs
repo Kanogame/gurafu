@@ -1,8 +1,16 @@
 use iced::Point;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
+pub struct WorldPoint{
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Clone)]
 pub struct Camera {
-    // position of camera in grid coordinates
+    // position of camera in world coordinates
     pub pos: Point<f32>,
 
     // camera zoom
@@ -26,7 +34,7 @@ impl Camera {
         }
     }
 
-    pub fn world_to_screen(&self, world_coords: Point<f32>) -> Point<f32> {
+    pub fn world_to_screen(&self, world_coords: WorldPoint) -> Point<f32> {
         let inv: f32 = 1_f32 / self.scale;
 
         Point {
@@ -49,8 +57,8 @@ impl Camera {
         }
     }
 
-    pub fn screen_to_world(&self, screen_coords: Point) -> Point {
-        Point {
+    pub fn screen_to_world(&self, screen_coords: Point) -> WorldPoint {
+        WorldPoint {
             x: (screen_coords.x * self.scale) + self.pos.x,
             y: (screen_coords.y * self.scale) + self.pos.y,
         }

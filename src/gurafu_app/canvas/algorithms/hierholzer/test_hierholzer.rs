@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test_hierholzer {
-    use crate::gurafu_app::canvas::drawable::arrow::Arrow;
-    use crate::gurafu_app::canvas::drawable::circle::Circle;
+    use crate::gurafu_app::canvas::drawable::link::Link;
+    use crate::gurafu_app::canvas::drawable::node::Node;
     use crate::gurafu_app::canvas::algorithms::hierholzer::{HierholzerState, HierholzerStep};
     use crate::gurafu_app::canvas::graph_algorithm::GraphAlgorithm;
 
@@ -9,21 +9,21 @@ mod test_hierholzer {
     use petgraph::stable_graph::NodeIndex;
     use rand::seq::SliceRandom;
 
-    fn add_edge(g: &mut StableGraph<Circle, Arrow>, from: usize, to: usize) {
+    fn add_edge(g: &mut StableGraph<Node, Link>, from: usize, to: usize) {
         let from_idx = NodeIndex::new(from);
         let to_idx = NodeIndex::new(to);
-        g.add_edge(from_idx, to_idx, Arrow::default());
+        g.add_edge(from_idx, to_idx, Link::default());
     }
 
-    fn make_circle_graph(n: usize) -> StableGraph<Circle, Arrow> {
-        let mut g = StableGraph::<Circle, Arrow>::new();
+    fn make_circle_graph(n: usize) -> StableGraph<Node, Link> {
+        let mut g = StableGraph::<Node, Link>::new();
         for _ in 0..n {
-            g.add_node(Circle::default());
+            g.add_node(Node::default());
         }
         g
     }
 
-    fn run_hierholzer(mut graph: StableGraph<Circle, Arrow>) -> HierholzerStep {
+    fn run_hierholzer(mut graph: StableGraph<Node, Link>) -> HierholzerStep {
         let mut algo = HierholzerState::new();
 
         while algo.algo_step != HierholzerStep::Completed

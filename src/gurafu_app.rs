@@ -1,15 +1,12 @@
 use std::fmt::Debug;
-use std::sync::Arc;
 
 use iced::Length::{self, Fill};
-use iced::theme::{Custom, Palette};
 use iced::time::{self};
 use iced::widget::{button, column, container, row, svg, text};
-use iced::{Color, Font, Task, font};
+use iced::{Font, Task, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
 use rfd::{AsyncFileDialog, FileHandle};
-use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::canvas::CanvasSerializable;
 use crate::gurafu_app::canvas::algorithms::hierholzer::HierholzerState;
@@ -158,12 +155,14 @@ impl GurafuApplication {
                     });
                 }
                 FileMessage::NewFile => {
+                    state.toolbar.state = toolbar::ToolbarOption::Hand;
                     state.canvas.set_graph(CanvasSerializable::new().into());
                 }
             },
             GurafuMessage::FileOpened(res) => match res {
                 Ok(content) => match serde_json::from_str::<CanvasSerializable>(&content) {
                     Ok(graph) => {
+                        state.toolbar.state = toolbar::ToolbarOption::Hand;
                         state.canvas.set_graph(graph.into());
                     }
                     Err(er) => {
@@ -348,21 +347,6 @@ impl GurafuApplication {
     }
 
     fn theme(&self) -> iced::Theme {
-        let c = Custom::new(
-            "Gurafu_theme".to_string(),
-            Palette {
-                primary: Color::from_rgb8(74, 144, 216),
-                background: Color::from_rgb8(232, 232, 232),
-                ..iced::Theme::Light.palette()
-            },
-        );
-
-        iced::Theme::Custom(Arc::new(c))
+        styles::get_theme()
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Node {
-    x: f32,
-    y: f32,
 }

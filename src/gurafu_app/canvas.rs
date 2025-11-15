@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use iced::{
-    Color, Length, Point, Rectangle, Renderer, Theme, Vector,
+    Color, Length, Rectangle, Renderer, Theme, Vector,
     mouse::{self, ScrollDelta},
     widget::{
         self,
@@ -16,11 +16,10 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::{
-    Node,
     canvas::{
-        canvas_frame::CanvasFrame, drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}, grid::Grid
+        camera::WorldPoint, canvas_frame::CanvasFrame, drawable::{DrawablePath, DrawableText, link::Link, node::{Node, NodeSerializable}}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}, grid::{Grid, GridPoint}
     },
-    toolbar::{ToolbarOption},
+    toolbar::ToolbarOption,
 };
 
 pub mod algorithms;
@@ -36,7 +35,7 @@ mod interactions;
 #[derive(Clone)]
 pub struct CanvasState<T> where T: GraphAlgorithm {
     toolbar_option: ToolbarOption,
-    graph: StableGraph<Circle, Arrow>,
+    graph: StableGraph<Node, Link>,
     grid: Grid,
 
     // algo
@@ -44,7 +43,7 @@ pub struct CanvasState<T> where T: GraphAlgorithm {
 
     // connection
     is_connecting: bool,
-    connection_start: Point,
+    connection_start: GridPoint,
 }
 
 #[derive(Debug, Clone)]
@@ -52,13 +51,13 @@ pub enum CanvasMessage {
     // Point - point in world
 
     // create new node on grid at point
-    CreateNodeOnGrid(Point),
+    CreateNodeOnGrid(WorldPoint),
 
     // remove node from closest grid point to point
-    RemoveNodeFromGrid(Point),
+    RemoveNodeFromGrid(WorldPoint),
 
     // connect elements
-    HandleConnection(Point),
+    HandleConnection(WorldPoint),
 }
 
 
@@ -82,12 +81,6 @@ impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorith
         state.update_grid_points(&self.grid, bounds.size());
 
         match event {
-            // although implementing state mutation in a canvas defies Elm arch,
-            // propagating it higher would be a giant overhead, so we act
-            // like a widget here and handle our state internally, exposing only
-            // minimal info needed (currently none)
-            //
-            // Btw, this is the "inteded way"
             canvas::Event::Mouse(m_ev) => match m_ev {
                 mouse::Event::ButtonPressed(mouse::Button::Left) => {
                     state.handle_left_mouse_pressed(pos)
@@ -127,13 +120,8 @@ impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorith
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry> {
-        // We prepare a new `Frame`
         let mut frame = CanvasFrame::new(renderer, bounds.size(), state.camera.clone());
 
-        //let cnt = state.graph.node_count() + state.graph.edge_count();
-        //let points = state.grid.get_grid_points();
-
-        // fill grid points (alignment helpers)
         for point in state.get_grid_points() {
             frame.fill(point, Color::from_rgb8(120, 120, 120));
         }
@@ -153,15 +141,16 @@ impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorith
             .map(|(_, c)| c as &dyn DrawableText)
             .collect();
 
-        drawable_path_list.append(
-            &mut self
+        frame.fill_frame(drawable_path_list);
+        frame.fill_text(drawable_text_list);
+        
+        drawable_path_list = self
                 .graph
                 .edge_references()
                 .map(|el| el.weight() as &dyn DrawablePath)
-                .collect(),
-        );
+                .collect();
+
         frame.fill_frame(drawable_path_list);
-        frame.fill_text(drawable_text_list);
 
         match cursor.position_in(bounds) {
             Some(c) => match self.draw_arrow(state.convert_screen_to_world(c)) {
@@ -202,35 +191,28 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
             algo: T::new(),
 
             is_connecting: false,
-            connection_start: Point { x: 0_f32, y: 0_f32 },
+            connection_start: GridPoint::default(),
         }
     }
 
-    pub fn draw_arrow(&self, end: Point) -> Option<Arrow> {
+    pub fn draw_arrow(&self, end: WorldPoint) -> Option<Link> {
         if self.is_connecting {
-            return Some(Arrow {
-                start: self.connection_start,
-                end: end,
-                line_width: 10.0,
-                arrowhead_size: 30.0,
-                offset: 0.0,
-                color: Color::from_rgb8(80, 80, 80),
-            });
+            return Some(Link::from_world_points(self.connection_start.into(), end))
         }
         None
     }
 
-    pub fn create_new_node_on_grid(&mut self, world: Point) {
+    pub fn create_new_node_on_grid(&mut self, world: WorldPoint) {
         let grid_pos = self.grid.to_grid(world);
 
-        let object = Circle {
+        let object = Node {
             id: 0,
-            center: grid_pos,
+            center: grid_pos.into(),
             radius: 30_f32,
             color: Theme::Light.palette().primary,
         };
 
-        match self.grid.get_object_in_world(grid_pos) {
+        match self.grid.get_from_grid(grid_pos) {
             Some(_) => {}
             None => {
                 let node_index = self.graph.add_node(object);
@@ -242,10 +224,10 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         }
     }
 
-    pub fn remove_node_from_grid(&mut self, world: Point) {
+    pub fn remove_node_from_grid(&mut self, world: WorldPoint) {
         let grid_pos = self.grid.to_grid(world);
 
-        let obj = self.grid.get_object_in_world(grid_pos);
+        let obj = self.grid.get_from_grid(grid_pos);
 
         match obj.cloned() {
             // if object is present on grid
@@ -264,7 +246,7 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
                         // odd
                         println!("Error: object is not present in grid");
 
-                        self.grid.remove_from_grid(world);
+                        self.grid.remove_from_grid(grid_pos);
                     }
                 }
             }
@@ -272,10 +254,10 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         }
     }
 
-    pub fn start_connection(&mut self, world: Point) {
+    pub fn start_connection(&mut self, world: WorldPoint) {
         let grid_point = self.grid.to_grid(world);
 
-        let start_node = self.grid.get_object_in_world(grid_point);
+        let start_node = self.grid.get_from_grid(grid_point);
 
         match start_node {
             Some(_) => {
@@ -286,29 +268,24 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         }
     }
 
-    pub fn end_connection(&mut self, world: Point) {
-        let start_node = self.grid.get_object_in_world(self.connection_start);
-        let end_node = self.grid.get_object_in_world(world);
+    pub fn end_connection(&mut self, world: WorldPoint) {
+        let end_grid_point = self.grid.to_grid(world);
+
+        let start_node = self.grid.get_from_grid(self.connection_start);
+        let end_node = self.grid.get_from_grid(end_grid_point);
 
         if start_node.is_some() && end_node.is_some() {
             self.graph.add_edge(
                 start_node.unwrap().clone(),
                 end_node.unwrap().clone(),
-                Arrow {
-                    start: self.grid.to_grid(self.connection_start),
-                    end: self.grid.to_grid(world),
-                    line_width: 5.0,
-                    arrowhead_size: 10.0,
-                    offset: 30.0,
-                    color: Color::from_rgb8(80, 80, 80),
-                },
+                Link::from_world_points(self.connection_start.into(), end_grid_point.into()),
             );
         }
 
         self.is_connecting = false;
     }
 
-    pub fn handle_connection(&mut self, world: Point) {
+    pub fn handle_connection(&mut self, world: WorldPoint) {
         if self.is_connecting {
             self.end_connection(world);
         } else {
@@ -335,15 +312,19 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         self.toolbar_option = new_state;
     }
 
-    pub fn set_graph(&mut self, new_graph: StableGraph<Circle, Arrow>) {
+    pub fn set_graph(&mut self, new_graph: StableGraph<Node, Link>) {
         self.graph = new_graph;
+        self.grid = Grid::new();
+        self.is_connecting = false;
+        self.toolbar_option = ToolbarOption::Hand;
+
         self.reset_algorithm();
     }
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct CanvasSerializable {
-    pub graph: StableGraph<Node, u32>,
+    pub graph: StableGraph<NodeSerializable, u32>,
 }
 
 impl CanvasSerializable {
@@ -354,13 +335,13 @@ impl CanvasSerializable {
     }
 }
 
-impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
-    fn into(self) -> StableGraph<Circle, Arrow> {
-        let mut res = StableGraph::new();
-        let mut node_map: HashMap<NodeIndex, (NodeIndex, &Node)> = HashMap::new();
+impl Into<StableGraph<Node, Link>> for CanvasSerializable {
+    fn into(self) -> StableGraph<Node, Link> {
+        let mut res: StableGraph<Node, Link> = StableGraph::new();
+        let mut node_map: HashMap<NodeIndex, (NodeIndex, &NodeSerializable)> = HashMap::new();
 
         self.graph.node_references().for_each(|(idx, node)| {
-            let new_idx = res.add_node(node.into_cricle());
+            let new_idx = res.add_node(node.into());
             res.node_weight_mut(new_idx).unwrap().id = new_idx.index();
 
             node_map.insert(idx, (idx, node));
@@ -370,7 +351,7 @@ impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
             let src = *node_map.get(&eref.source()).unwrap();
             let trg = *node_map.get(&eref.target()).unwrap();
 
-            res.add_edge(src.0, trg.0, Arrow::from_nodes(src.1, trg.1));
+            res.add_edge(src.0, trg.0, Link::from_nodes_serializable(src.1, trg.1));
         });
 
         res
@@ -379,7 +360,7 @@ impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
 
 impl <T>Into<CanvasSerializable> for CanvasState<T> where T: GraphAlgorithm {
     fn into(self) -> CanvasSerializable {
-        let mut res: StableGraph<Node, u32> = StableGraph::new();
+        let mut res: StableGraph<NodeSerializable, u32> = StableGraph::new();
         let mut node_map: HashMap<NodeIndex, NodeIndex> = HashMap::new();
 
         self.graph.node_references().for_each(|(idx, cl)| {

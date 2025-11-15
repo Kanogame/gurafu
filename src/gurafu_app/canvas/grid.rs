@@ -1,78 +1,74 @@
 use std::collections::HashMap;
 
-use iced::Point;
 use petgraph::graph::NodeIndex;
 
+use crate::gurafu_app::canvas::camera::WorldPoint;
 
 #[derive(Clone)]
 pub struct Grid {
-    pub step_size: f32,
+    pub step_size: i32,
     objects: HashMap<GridPoint, NodeIndex>,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct GridPoint(pub iced::Point<i32>);
+#[derive(Clone, Copy, PartialEq, Default)]
+pub struct GridPoint {
+    pub x: i32,
+    pub y: i32,
+}
 
 impl std::hash::Hash for GridPoint {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.x.hash(state);
-        self.0.y.hash(state);
-    }
-}
-
-impl PartialEq for GridPoint {
-    fn eq(&self, other: &GridPoint) -> bool {
-        return self.0.x == other.0.x && self.0.y == other.0.y;
+        self.x.hash(state);
+        self.y.hash(state);
     }
 }
 
 impl Eq for GridPoint {}
 
+impl Into<WorldPoint> for GridPoint {
+    fn into(self) -> WorldPoint {
+        WorldPoint {
+            x: self.x as f32,
+            y: self.y as f32,
+        }
+    }
+}
+
 impl Grid {
     pub fn new() -> Self {
         Grid {
-            step_size: 100_f32,
+            step_size: 100,
             objects: HashMap::new(),
         }
     }
 
-    pub fn get_object_in_world(&self, world: Point) -> Option<&NodeIndex> {
-        self.objects.get(&self.to_gridpoint(world))
+    pub fn get_from_grid(&self, grid: GridPoint) -> Option<&NodeIndex> {
+        self.objects.get(&grid)
     }
 
     // clamps the point to top left point on grid
-    pub fn to_grid_tl(&self, world: Point) -> Point {
-        Point {
-            x: (world.x / self.step_size).floor() * self.step_size,
-            y: (world.y / self.step_size).floor() * self.step_size,
+    pub fn to_grid_tl(&self, world: WorldPoint) -> GridPoint {
+        GridPoint {
+            x: (world.x / (self.step_size as f32)).floor() as i32 * self.step_size,
+            y: (world.y / (self.step_size as f32)).floor() as i32 * self.step_size,
         }
     }
 
     // claps the point to closest point on grid
-    pub fn to_gridpoint(&self, world: Point) -> GridPoint {
+    pub fn to_grid(&self, world: WorldPoint) -> GridPoint {
         GridPoint {
-            0: Point {
-                x: ((world.x / self.step_size).round() * self.step_size) as i32,
-                y: ((world.y / self.step_size).round() * self.step_size) as i32,
-            },
+            x: (world.x / (self.step_size as f32)).round() as i32 * self.step_size,
+            y: (world.y / (self.step_size as f32)).round() as i32 * self.step_size,
         }
     }
 
-    pub fn to_grid(&self, world: Point) -> Point {
-        Point {
-            x: (world.x / self.step_size).round() * self.step_size,
-            y: (world.y / self.step_size).round() * self.step_size,
-        }
-    }
-
-    pub fn add_to_grid(&mut self, world: Point, object: NodeIndex) {
-        let grid = self.to_gridpoint(world);
+    pub fn add_to_grid(&mut self, grid: GridPoint, object: NodeIndex) {
         if !self.objects.contains_key(&grid) {
             self.objects.insert(grid, object);
         }
     }
 
-    pub fn remove_from_grid(&mut self, world: Point) {
-        self.objects.remove(&self.to_gridpoint(world));
+    pub fn remove_from_grid(&mut self, grid: GridPoint) {
+        self.objects.remove(&grid);
     }
 }
