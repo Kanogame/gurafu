@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::gurafu_app::canvas::CanvasSerializable;
 use crate::gurafu_app::canvas::algorithms::hierholzer::HierholzerState;
-use crate::gurafu_app::canvas::graph_algorithm::{AlgorithmMessage, AlgorithmResultDisplay};
+use crate::gurafu_app::canvas::graph_algorithm::{AlgorithmMessage};
 use crate::gurafu_app::components::message_box::{self, MessageBoxMessage};
 use crate::gurafu_app::components::modal::modal;
 use crate::gurafu_app::file::FileMessage;

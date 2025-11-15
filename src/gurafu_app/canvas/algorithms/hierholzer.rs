@@ -1,7 +1,6 @@
 use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef};
-use std::collections::{HashSet, VecDeque};
 
-use crate::gurafu_app::canvas::{drawable::{arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, AlgorithmResultDisplay, GraphAlgorithm}
+use crate::gurafu_app::canvas::{drawable::{arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}
 };
 
 mod test_hierholzer;
@@ -536,26 +535,6 @@ impl HierholzerState {
                 }
             }
         }
-        self.highlighted_edges.clear();
-    }
-
-    /// Вспомогательная очистка кандидатских подсветок (между проверками)
-    fn clear_candidate_highlights(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-        for &node in &self.highlighted_candidates {
-            if let Some(node_weight) = graph.node_weight_mut(node) {
-                if !self.circuit.contains(&node) && !self.stack.contains(&node) {
-                    node_weight.reset_highlight();
-                }
-            }
-        }
-        for &edge_id in &self.highlighted_edges {
-            if !self.visited_edges.contains(&edge_id) {
-                if let Some(edge_weight) = graph.edge_weight_mut(edge_id) {
-                    edge_weight.reset_highlight();
-                }
-            }
-        }
-        self.highlighted_candidates.clear();
         self.highlighted_edges.clear();
     }
 

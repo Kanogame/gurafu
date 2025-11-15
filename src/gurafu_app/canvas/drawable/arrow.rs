@@ -114,10 +114,6 @@ impl Arrow {
         self.color = Color::from_rgb8(0, 255, 255);
     }
 
-    pub fn highlight_bridge(&mut self) {
-        self.color = Color::from_rgb8(255, 0, 0)
-    }
-
     pub fn highlight_path(&mut self) {
         self.color = Color::from_rgb8(144, 238, 144)
     }

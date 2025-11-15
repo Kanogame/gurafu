@@ -18,9 +18,9 @@ use serde::{Deserialize, Serialize};
 use crate::gurafu_app::{
     Node,
     canvas::{
-        canvas_frame::CanvasFrame, drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, AlgorithmResultDisplay, GraphAlgorithm}, grid::Grid
+        canvas_frame::CanvasFrame, drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}, grid::Grid
     },
-    toolbar::{ToolbarOption, ToolbarState},
+    toolbar::{ToolbarOption},
 };
 
 pub mod algorithms;
