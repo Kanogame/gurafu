@@ -89,6 +89,179 @@ impl FlueryState {
         self.step_explanation = "Initializing algorithm".into();
     }
 
+    fn backtrack_all(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+        // Собираем circuit в правильном порядке из стека
+        // Просто копируем стек, так как он уже содержит правильный порядок обхода
+        self.circuit = self.stack.clone();
+
+        // Добавляем начальную вершину в конец для замыкания цикла
+        if let Some(&start) = self.circuit.first() {
+            self.circuit.push(start);
+        }
+
+        // Подсвечиваем вершины решения
+        for &v in &self.circuit {
+            if let Some(n) = graph.node_weight_mut(v) {
+                n.highlight_solution();
+            }
+        }
+
+        let total_edges = self.visited_edges.len();
+        let start_end_match = self.circuit.first() == self.circuit.last();
+        let expected_circuit_length = total_edges + 1;
+
+        // Более гибкая проверка завершения
+        let edges_remaining = self.graph_clone.edge_count();
+
+        if edges_remaining == 0 && start_end_match {
+            self.algo_step = FlueryStep::Completed;
+            self.step_explanation = format!("Eulerian cycle found with {} edges", total_edges);
+        } else {
+            self.algo_step = FlueryStep::Failed;
+            self.step_explanation = format!(
+                "Incomplete circuit: edges_remaining={}, start/end match: {}, circuit length: {} (expected: {})",
+                edges_remaining,
+                start_end_match,
+                self.circuit.len(),
+                expected_circuit_length
+            );
+        }
+    }
+
+    fn advance_to_next(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+        let current = self.current_node.unwrap();
+        let next = match self.next_candidate {
+            Some(node) => node,
+            None => {
+                self.algo_step = FlueryStep::Backtracking;
+                return;
+            }
+        };
+
+        // Находим и удаляем ребро из клона графа
+        if let Some(edge_id) = self.graph_clone.find_edge(current, next) {
+            self.graph_clone.remove_edge(edge_id);
+            self.visited_edges.push(edge_id);
+
+            // Подсвечиваем ребро как посещенное
+            if let Some(edge) = graph.edge_weight_mut(edge_id) {
+                edge.highlight_path();
+            }
+        }
+
+        // Обновляем подсветку вершин
+        if let Some(node) = graph.node_weight_mut(current) {
+            node.highlight_visited();
+        }
+
+        // Переходим к следующей вершине
+        self.current_node = Some(next);
+
+        // Добавляем следующую вершину в стек
+        self.stack.push(next);
+
+        self.next_candidate = None;
+        self.current_outgoing.clear();
+        self.algo_step = FlueryStep::CheckingOutgoing;
+    }
+
+    fn choose_next_edge(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+        let current = self.current_node.unwrap();
+
+        // Перебираем все возможные ребра, начиная с current_idx
+        for i in self.current_idx..self.current_outgoing.len() {
+            let (candidate, edge_id) = self.current_outgoing[i];
+            let is_bridge = self.is_bridge(current, candidate, edge_id);
+
+            if !is_bridge {
+                // Нашли не-мостовое ребро - используем его
+                self.next_candidate = Some(candidate);
+                self.current_idx = i + 1; // Увеличиваем индекс для следующей итерации
+
+                // Подсвечиваем выбранное ребро и вершину
+                if let Some(edge) = graph.edge_weight_mut(edge_id) {
+                    edge.highlight_selected();
+                }
+                if let Some(node) = graph.node_weight_mut(candidate) {
+                    node.highlight_next();
+                }
+
+                self.algo_step = FlueryStep::Advancing;
+                return;
+            }
+        }
+
+        // Если все ребра - мосты, берем первое доступное
+        if let Some(&(first_candidate, first_edge)) = self.current_outgoing.first() {
+            self.next_candidate = Some(first_candidate);
+            self.current_idx = 0; // Сбрасываем индекс
+
+            if let Some(edge) = graph.edge_weight_mut(first_edge) {
+                edge.highlight_selected();
+            }
+            if let Some(node) = graph.node_weight_mut(first_candidate) {
+                node.highlight_next();
+            }
+
+            self.algo_step = FlueryStep::Advancing;
+        } else {
+            self.algo_step = FlueryStep::Backtracking;
+        }
+    }
+
+    fn is_bridge(&self, from: NodeIndex, to: NodeIndex, eid: petgraph::graph::EdgeIndex) -> bool {
+        let mut temp = self.graph_clone.clone();
+        temp.remove_edge(eid);
+
+        // Проверяем достижимость to из from в ориентированном графе
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back(from);
+        visited.insert(from);
+
+        while let Some(node) = queue.pop_front() {
+            for neighbor in temp.neighbors_directed(node, Direction::Outgoing) {
+                if visited.insert(neighbor) {
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+
+        // Если to недостижим из from после удаления ребра - это мост
+        !visited.contains(&to)
+    }
+
+    fn check_outgoing_edges(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+        self.clear_temporary_highlights(graph);
+
+        let current = match self.current_node {
+            Some(node) => node,
+            None => {
+                self.algo_step = FlueryStep::Failed;
+                return;
+            }
+        };
+
+        // Получаем все исходящие ребра
+        let outgoing_edges: Vec<_> = self
+            .graph_clone
+            .edges_directed(current, Direction::Outgoing)
+            .map(|edge| (edge.target(), edge.id()))
+            .collect();
+
+        self.current_outgoing = outgoing_edges;
+        self.current_idx = 0; // Сбрасываем индекс при каждой новой проверке
+
+        if self.current_outgoing.is_empty() {
+            // Нет исходящих ребер - возврат
+            self.algo_step = FlueryStep::Backtracking;
+            return;
+        }
+
+        // Переходим к выбору следующего ребра
+        self.algo_step = FlueryStep::ChoosingNext;
+    }
+
     fn find_start_node(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
         // === 1️⃣ Проверка эйлеровости графа ===
         if !Self::is_eulerian_directed(&self.graph_clone) {
@@ -137,135 +310,6 @@ impl FlueryState {
             }
         }
         true
-    }
-
-    fn check_outgoing_edges(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-        self.clear_temporary_highlights(graph);
-
-        let cur = match self.current_node {
-            Some(v) => v,
-            None => {
-                self.algo_step = FlueryStep::Failed;
-                return;
-            }
-        };
-
-        let outgoing: Vec<_> = self
-            .graph_clone
-            .edges_directed(cur, Direction::Outgoing)
-            .map(|e| (e.target(), e.id()))
-            .collect();
-
-        self.current_outgoing = outgoing;
-
-        if self.current_outgoing.is_empty() {
-            self.algo_step = FlueryStep::Backtracking;
-            return;
-        }
-
-        if self.current_outgoing.len() == 1 {
-            let (next, eid) = self.current_outgoing[0];
-            graph.edge_weight_mut(eid).unwrap().highlight_selected();
-            graph.node_weight_mut(next).unwrap().highlight_next();
-            self.next_candidate = Some(next);
-            self.algo_step = FlueryStep::Advancing;
-            return;
-        }
-
-        self.current_idx = 0;
-        self.algo_step = FlueryStep::ChoosingNext;
-    }
-
-    fn choose_next_edge(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-        let cur = self.current_node.unwrap();
-        if self.current_idx >= self.current_outgoing.len() {
-            let (next, eid) = self.current_outgoing[0];
-            self.next_candidate = Some(next);
-            graph.edge_weight_mut(eid).unwrap().highlight_selected();
-            self.algo_step = FlueryStep::Advancing;
-            return;
-        }
-
-        let (candidate, eid) = self.current_outgoing[self.current_idx];
-        let is_bridge = self.is_bridge(cur, candidate, eid);
-
-        if is_bridge {
-            self.current_idx += 1;
-            return;
-        } else {
-            self.next_candidate = Some(candidate);
-            graph.edge_weight_mut(eid).unwrap().highlight_selected();
-            self.algo_step = FlueryStep::Advancing;
-        }
-    }
-
-    fn advance_to_next(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-        let cur = self.current_node.unwrap();
-        let next = self.next_candidate.unwrap();
-
-        if let Some(eid) = self.graph_clone.find_edge(cur, next) {
-            self.graph_clone.remove_edge(eid);
-            self.visited_edges.push(eid);
-            if let Some(e) = graph.edge_weight_mut(eid) {
-                e.highlight_path();
-            }
-        }
-
-        if let Some(node) = graph.node_weight_mut(cur) {
-            node.highlight_visited();
-        }
-
-        self.stack.push(next);
-        self.current_node = Some(next);
-        self.next_candidate = None;
-        self.current_outgoing.clear();
-        self.algo_step = FlueryStep::CheckingOutgoing;
-    }
-
-    fn backtrack_all(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-        while let Some(v) = self.stack.pop() {
-            self.circuit.push(v);
-            if let Some(n) = graph.node_weight_mut(v) {
-                n.highlight_solution();
-            }
-        }
-
-        let total_edges = self.visited_edges.len();
-        let ok = self.graph_clone.edge_count() == 0
-            && self.circuit.first() == self.circuit.last()
-            && self.circuit.len() == total_edges + 1;
-
-        if ok {
-            self.algo_step = FlueryStep::Completed;
-            self.step_explanation = format!("Eulerian cycle found with {} edges", total_edges);
-        } else {
-            self.algo_step = FlueryStep::Failed;
-            self.step_explanation = format!(
-                "Incomplete circuit: edges_remaining={}, start/end mismatch or skipped edge",
-                self.graph_clone.edge_count()
-            );
-        }
-    }
-
-    fn is_bridge(&self, from: NodeIndex, to: NodeIndex, eid: petgraph::graph::EdgeIndex) -> bool {
-        let mut temp = self.graph_clone.clone();
-        temp.remove_edge(eid);
-
-        // Проверяем, достижим ли 'to' из 'from' в изменённом графе
-        let mut visited = HashSet::new();
-        let mut q = VecDeque::new();
-        q.push_back(from);
-        visited.insert(from);
-
-        while let Some(u) = q.pop_front() {
-            for nb in temp.neighbors_directed(u, Direction::Outgoing) {
-                if visited.insert(nb) {
-                    q.push_back(nb);
-                }
-            }
-        }
-
-        !visited.contains(&to)
     }
 
     fn clear_temporary_highlights(&mut self, graph: &mut StableGraph<Circle, Arrow>) {

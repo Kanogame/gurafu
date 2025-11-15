@@ -8,11 +8,7 @@ mod test_fluery {
     use petgraph::stable_graph::NodeIndex;
     use rand::seq::SliceRandom;
 
-    fn add_edge(
-        g: &mut StableGraph<Circle, Arrow>,
-        from: usize,
-        to: usize,
-    ) {
+    fn add_edge(g: &mut StableGraph<Circle, Arrow>, from: usize, to: usize) {
         let from_idx = NodeIndex::new(from);
         let to_idx = NodeIndex::new(to);
         g.add_edge(from_idx, to_idx, Arrow::default());
@@ -66,6 +62,26 @@ mod test_fluery {
         assert_eq!(result, FlueryStep::Completed);
     }
 
+    /// Примитив 3: Двойной треугольник
+    #[test]
+    fn double_triangle_cycle() {
+        let mut g = make_circle_graph(5);
+        add_edge(&mut g, 0, 1);
+        add_edge(&mut g, 1, 2);
+        add_edge(&mut g, 2, 4);
+        add_edge(&mut g, 4, 3);
+        add_edge(&mut g, 3, 2);
+        add_edge(&mut g, 2, 0);
+
+        let mut algo = FlueryState::new();
+        algo.graph_clone = g.clone();
+        algo.current_node = Some(NodeIndex::new(0));
+        algo.stack.push(NodeIndex::new(0));
+
+        let result = run_fluery(algo, g);
+        assert_eq!(result, FlueryStep::Completed);
+    }
+
     /// Контрпример: 0→3→2→1→0 и 0→2
     #[test]
     fn counterexample_false_cycle_should_fail() {
@@ -82,7 +98,11 @@ mod test_fluery {
         algo.stack.push(NodeIndex::new(0));
 
         let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Failed, "Алгоритм должен завершиться с ошибкой");
+        assert_eq!(
+            result,
+            FlueryStep::Failed,
+            "Алгоритм должен завершиться с ошибкой"
+        );
     }
 
     /// Сложный: два цикла, соединённые мостом
