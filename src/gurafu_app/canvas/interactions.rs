@@ -2,7 +2,7 @@ use iced::{Point, Size, mouse, widget::canvas};
 
 use crate::gurafu_app::{
     canvas::{CanvasMessage, camera::Camera, grid::Grid, helpers},
-    toolbar::ToolbarOptions,
+    toolbar::ToolbarOption,
 };
 
 pub struct CanvasStateInternal {
@@ -16,7 +16,7 @@ pub struct CanvasStateInternal {
 
     // state
     pub camera: Camera,
-    pub toolbar_state: ToolbarOptions,
+    pub toolbar_state: ToolbarOption,
 }
 
 impl Default for CanvasStateInternal {
@@ -30,7 +30,7 @@ impl CanvasStateInternal {
         return CanvasStateInternal {
             points: Vec::new(),
             camera: Camera::new(),
-            toolbar_state: ToolbarOptions::new(),
+            toolbar_state: ToolbarOption::new(),
             is_dragging: false,
             drag_start_position: Point { x: 0_f32, y: 0_f32 },
             drag_offset: Point { x: 0_f32, y: 0_f32 },
@@ -89,14 +89,14 @@ impl CanvasStateInternal {
 
     pub fn get_cursor_state(&self) -> mouse::Interaction {
         match self.toolbar_state {
-            ToolbarOptions::Hand => {
+            ToolbarOption::Hand => {
                 if self.is_dragging {
                     mouse::Interaction::Grabbing
                 } else {
                     mouse::Interaction::Grab
                 }
             }
-            ToolbarOptions::Node => mouse::Interaction::Pointer,
+            ToolbarOption::Node => mouse::Interaction::Pointer,
             _ => mouse::Interaction::None,
         }
     }
@@ -107,7 +107,7 @@ impl CanvasStateInternal {
         cursor: Option<Point>,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         match self.toolbar_state {
-            ToolbarOptions::Hand => {
+            ToolbarOption::Hand => {
                 if self.is_dragging {
                     self.is_dragging = false;
 
@@ -115,14 +115,14 @@ impl CanvasStateInternal {
                     return helpers::CAPTURED;
                 }
             }
-            ToolbarOptions::Node => {
+            ToolbarOption::Node => {
                 self.is_dragging = false;
 
                 if cursor.is_some() {
                     return self.create_new_node_on_grid(cursor.unwrap());
                 }
             }
-            ToolbarOptions::Connection => {
+            ToolbarOption::Connection => {
                 if cursor.is_some() {
                     return helpers::capured_message(CanvasMessage::HandleConnection(
                         self.camera.screen_to_world(cursor.unwrap()),
@@ -138,14 +138,14 @@ impl CanvasStateInternal {
         cursor: Option<Point>,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         match self.toolbar_state {
-            ToolbarOptions::Hand => {
+            ToolbarOption::Hand => {
                 if !self.is_dragging && cursor.is_some() {
                     self.is_dragging = true;
                     self.drag_start_position = cursor.unwrap();
                     return helpers::CAPTURED;
                 }
             }
-            ToolbarOptions::Node => {
+            ToolbarOption::Node => {
                 self.is_dragging = false;
             }
             _ => {}
@@ -186,7 +186,7 @@ impl CanvasStateInternal {
         cursor: Option<Point>,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         match self.toolbar_state {
-            ToolbarOptions::Node => {
+            ToolbarOption::Node => {
                 if cursor.is_some() {
                     return self.remove_node_from_grid(cursor.unwrap());
                 }

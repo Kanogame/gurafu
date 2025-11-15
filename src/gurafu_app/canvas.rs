@@ -18,32 +18,29 @@ use serde::{Deserialize, Serialize};
 use crate::gurafu_app::{
     Node,
     canvas::{
-        canvas_frame::CanvasFrame,
-        drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle},
-        hierholzer::HierholzerState,
-        grid::Grid,
+        canvas_frame::CanvasFrame, drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, AlgorithmResultDisplay, GraphAlgorithm}, grid::Grid
     },
-    toolbar::ToolbarOptions,
+    toolbar::{ToolbarOption, ToolbarState},
 };
+
+pub mod algorithms;
+pub mod graph_algorithm;
 
 mod camera;
 mod canvas_frame;
 mod drawable;
-mod hierholzer;
 mod grid;
 mod helpers;
-// just zoom, pan and interaction state
 mod interactions;
 
 #[derive(Clone)]
-pub struct CanvasState {
-    pub toolbar_state: ToolbarOptions,
-    //canvas_cache: Cache,
-    pub graph: StableGraph<Circle, Arrow>,
-    pub grid: Grid,
+pub struct CanvasState<T> where T: GraphAlgorithm {
+    toolbar_option: ToolbarOption,
+    graph: StableGraph<Circle, Arrow>,
+    grid: Grid,
 
     // algo
-    algo: HierholzerState,
+    algo: T,
 
     // connection
     is_connecting: bool,
@@ -64,12 +61,8 @@ pub enum CanvasMessage {
     HandleConnection(Point),
 }
 
-pub enum AlgorithmMessage {
-    AlgorithmSuccess(Vec<usize>),
-    AlgorithmFail,
-}
 
-impl canvas::Program<CanvasMessage> for CanvasState {
+impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorithm {
     type State = interactions::CanvasStateInternal;
 
     fn update(
@@ -79,7 +72,7 @@ impl canvas::Program<CanvasMessage> for CanvasState {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
-        state.toolbar_state = self.toolbar_state.clone();
+        state.toolbar_state = self.toolbar_option.clone();
         let pos = cursor.position_in(bounds);
 
         if pos.is_none() {
@@ -199,14 +192,14 @@ impl canvas::Program<CanvasMessage> for CanvasState {
     }
 }
 
-impl CanvasState {
+impl <T>CanvasState<T> where T: GraphAlgorithm {
     pub fn new() -> Self {
         CanvasState {
-            toolbar_state: ToolbarOptions::new(),
+            toolbar_option: ToolbarOption::new(),
             graph: StableGraph::new(),
             grid: Grid::new(),
 
-            algo: HierholzerState::new(),
+            algo: T::new(),
 
             is_connecting: false,
             connection_start: Point { x: 0_f32, y: 0_f32 },
@@ -323,7 +316,7 @@ impl CanvasState {
         }
     }
 
-    pub fn view(state: &CanvasState) -> iced::Element<'_, CanvasMessage> {
+    pub fn view(state: &CanvasState<T>) -> iced::Element<'_, CanvasMessage> {
         widget::canvas(state)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -336,6 +329,15 @@ impl CanvasState {
 
     pub fn reset_algorithm(&mut self) {
         self.algo.reset_algorithm(&mut self.graph);
+    }
+
+    pub fn set_toolbar_options(&mut self, new_state: ToolbarOption) {
+        self.toolbar_option = new_state;
+    }
+
+    pub fn set_graph(&mut self, new_graph: StableGraph<Circle, Arrow>) {
+        self.graph = new_graph;
+        self.reset_algorithm();
     }
 }
 
@@ -375,7 +377,7 @@ impl Into<StableGraph<Circle, Arrow>> for CanvasSerializable {
     }
 }
 
-impl Into<CanvasSerializable> for CanvasState {
+impl <T>Into<CanvasSerializable> for CanvasState<T> where T: GraphAlgorithm {
     fn into(self) -> CanvasSerializable {
         let mut res: StableGraph<Node, u32> = StableGraph::new();
         let mut node_map: HashMap<NodeIndex, NodeIndex> = HashMap::new();

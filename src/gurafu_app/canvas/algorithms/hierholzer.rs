@@ -1,8 +1,7 @@
 use petgraph::{Direction, graph::NodeIndex, prelude::StableGraph, visit::EdgeRef};
 use std::collections::{HashSet, VecDeque};
 
-use crate::gurafu_app::canvas::{
-    AlgorithmMessage, CanvasMessage, drawable::{arrow::Arrow, circle::Circle}
+use crate::gurafu_app::canvas::{drawable::{arrow::Arrow, circle::Circle}, graph_algorithm::{AlgorithmMessage, AlgorithmResultDisplay, GraphAlgorithm}
 };
 
 mod test_hierholzer;
@@ -45,28 +44,8 @@ enum HierholzerStep {
     Failed,
 }
 
-impl HierholzerState {
-    pub fn new() -> Self {
-        Self {
-            algo_step: HierholzerStep::NotStarted,
-            stack: Vec::new(),
-            circuit: Vec::new(),
-            current_node: None,
-            graph_clone: StableGraph::new(),
-            current_outgoing: Vec::new(),
-            current_idx: 0,
-            next_candidate: None,
-            next_edge: None,
-            visited_edges: Vec::new(),
-            step_explanation: String::new(),
-            highlighted_candidates: Vec::new(),
-            highlighted_edges: Vec::new(),
-            original_edge_count: 0,
-        }
-    }
-
-    /// Публичный интерфейс — шаг алгоритма. Возвращает AlgorithmMessage при завершении/ошибке.
-    pub fn step_algorithm(
+impl GraphAlgorithm for HierholzerState {
+    fn step_algorithm(
         &mut self,
         graph: &mut StableGraph<Circle, Arrow>,
     ) -> Option<AlgorithmMessage> {
@@ -84,12 +63,19 @@ impl HierholzerState {
 
                 // На выходе возвращаем circuit в прямом порядке (0->1->2->...)
                 return Some(AlgorithmMessage::AlgorithmSuccess(
-                    self.circuit.iter().map(|el| el.index()).collect(),
+                    format!(
+                        "Алгоритм выполнен успешно, Эйлеров цикл: {}",
+                        self.circuit
+                            .iter()
+                            .map(|el| el.index().to_string())
+                            .collect::<Vec<String>>()
+                            .join(" -> ")
+                    )
                 ));
             }
             HierholzerStep::Failed => {
                 self.step_explanation = "Algorithm failed (graph not Eulerian)".into();
-                return Some(AlgorithmMessage::AlgorithmFail);
+                return Some(AlgorithmMessage::AlgorithmFail("Алгоритм завершился, Эйлеров цикл не найден".to_string()));
             }
         }
 
@@ -102,6 +88,48 @@ impl HierholzerState {
         None
     }
 
+    fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
+        self.graph_clone = graph.clone();
+        self.algo_step = HierholzerStep::Initializing;
+        self.stack.clear();
+        self.circuit.clear();
+        self.current_node = None;
+        self.current_outgoing.clear();
+        self.current_idx = 0;
+        self.next_candidate = None;
+        self.next_edge = None;
+        self.visited_edges.clear();
+        self.step_explanation.clear();
+        self.highlighted_candidates.clear();
+        self.highlighted_edges.clear();
+
+        // сохраняем исходное количество рёбер для финальной валидации
+        self.original_edge_count = graph.edge_count();
+
+        self.clear_highlights(graph);
+    }
+
+    fn new() -> Self {
+        Self {
+            algo_step: HierholzerStep::NotStarted,
+            stack: Vec::new(),
+            circuit: Vec::new(),
+            current_node: None,
+            graph_clone: StableGraph::new(),
+            current_outgoing: Vec::new(),
+            current_idx: 0,
+            next_candidate: None,
+            next_edge: None,
+            visited_edges: Vec::new(),
+            step_explanation: String::new(),
+            highlighted_candidates: Vec::new(),
+            highlighted_edges: Vec::new(),
+            original_edge_count: 0,
+        }
+    }
+}
+
+impl HierholzerState {
     /// Инициализация: клонируем граф, считаем исходное число рёбер, очищаем состояние
     fn initialize_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
         self.reset_algorithm(graph);
@@ -541,25 +569,5 @@ impl HierholzerState {
         }
     }
 
-    /// Сброс состояния алгоритма: клонирование графа, инициализация счётчиков и подсветок.
-    pub fn reset_algorithm(&mut self, graph: &mut StableGraph<Circle, Arrow>) {
-        self.graph_clone = graph.clone();
-        self.algo_step = HierholzerStep::Initializing;
-        self.stack.clear();
-        self.circuit.clear();
-        self.current_node = None;
-        self.current_outgoing.clear();
-        self.current_idx = 0;
-        self.next_candidate = None;
-        self.next_edge = None;
-        self.visited_edges.clear();
-        self.step_explanation.clear();
-        self.highlighted_candidates.clear();
-        self.highlighted_edges.clear();
-
-        // сохраняем исходное количество рёбер для финальной валидации
-        self.original_edge_count = graph.edge_count();
-
-        self.clear_highlights(graph);
-    }
+    
 }

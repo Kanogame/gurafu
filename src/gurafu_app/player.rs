@@ -1,7 +1,7 @@
 use core::time;
 
 use iced::{
-    Alignment, Font, font,
+    Font, font,
     widget::{button, column, row, slider, svg, text},
 };
 

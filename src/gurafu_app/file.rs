@@ -3,7 +3,8 @@ use iced::{
     widget::{column, text},
 };
 
-use crate::gurafu_app::svg_button::svg_button;
+use crate::gurafu_app::components::svg_button::svg_button;
+
 
 pub struct FileState {
     // state

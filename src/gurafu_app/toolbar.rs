@@ -1,16 +1,17 @@
 use iced::{
     Font, font,
-    widget::{Column, Row, column, text},
+    widget::{Column, column, text},
 };
 
-use crate::gurafu_app::svg_button::svg_button;
+use crate::gurafu_app::components::svg_button::svg_button;
+
 
 pub struct ToolbarState {
-    pub state: ToolbarOptions,
+    pub state: ToolbarOption,
 }
 
 #[derive(Debug, Clone)]
-pub enum ToolbarOptions {
+pub enum ToolbarOption {
     Hand,
     Node,
     Connection,
@@ -18,45 +19,45 @@ pub enum ToolbarOptions {
 
 #[derive(Debug, Clone)]
 pub enum ToolbarMessage {
-    ChosenState(ToolbarOptions),
+    ChosenOption(ToolbarOption),
 }
 
-impl ToolbarOptions {
+impl ToolbarOption {
     const VALUES: [Self; 3] = [
-        ToolbarOptions::Hand,
-        ToolbarOptions::Node,
-        ToolbarOptions::Connection,
+        ToolbarOption::Hand,
+        ToolbarOption::Node,
+        ToolbarOption::Connection,
     ];
 
     pub fn new() -> Self {
-        ToolbarOptions::Hand
+        ToolbarOption::Hand
     }
 
     fn name(&self) -> &str {
         match self {
-            ToolbarOptions::Hand => "Рука",
-            ToolbarOptions::Node => "Узел",
-            ToolbarOptions::Connection => "Связь",
+            ToolbarOption::Hand => "Рука",
+            ToolbarOption::Node => "Узел",
+            ToolbarOption::Connection => "Связь",
         }
     }
 
     fn icon(&self) -> &str {
         match self {
-            ToolbarOptions::Hand => "assets/icons/hand.svg",
-            ToolbarOptions::Node => "assets/icons/add-node.svg",
-            ToolbarOptions::Connection => "assets/icons/add-link.svg",
+            ToolbarOption::Hand => "assets/icons/hand.svg",
+            ToolbarOption::Node => "assets/icons/add-node.svg",
+            ToolbarOption::Connection => "assets/icons/add-link.svg",
         }
     }
 
     fn to_message(&self) -> ToolbarMessage {
-        ToolbarMessage::ChosenState(self.clone())
+        ToolbarMessage::ChosenOption(self.clone())
     }
 }
 
 impl ToolbarState {
     pub fn new() -> Self {
         ToolbarState {
-            state: ToolbarOptions::new(),
+            state: ToolbarOption::new(),
         }
     }
 
@@ -68,7 +69,7 @@ impl ToolbarState {
             }),
             text("Выбранный инструмент: ".to_string() + state.state.name()),
             Column::with_children(
-                ToolbarOptions::VALUES
+                ToolbarOption::VALUES
                     .map(|el| { svg_button(el.name().into(), el.icon().into(), el.to_message()) })
             )
             .spacing(15)

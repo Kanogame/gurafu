@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use iced::Length::{self, Fill};
-use iced::theme::palette::Extended;
 use iced::theme::{Custom, Palette};
 use iced::time::{self};
 use iced::widget::{button, column, container, row, svg, text};
@@ -12,24 +11,25 @@ use iced::{Settings, Subscription, widget::pane_grid};
 use rfd::{AsyncFileDialog, FileHandle};
 use serde::{Deserialize, Serialize};
 
-use crate::gurafu_app::canvas::{AlgorithmMessage, CanvasSerializable};
+use crate::gurafu_app::canvas::CanvasSerializable;
+use crate::gurafu_app::canvas::algorithms::hierholzer::HierholzerState;
+use crate::gurafu_app::canvas::graph_algorithm::{AlgorithmMessage, AlgorithmResultDisplay};
+use crate::gurafu_app::components::message_box::{self, MessageBoxMessage};
+use crate::gurafu_app::components::modal::modal;
 use crate::gurafu_app::file::FileMessage;
-use crate::gurafu_app::message_box::MessageBoxMessage;
 use crate::gurafu_app::{canvas::CanvasMessage, player::PlayerMessage, toolbar::ToolbarMessage};
 
 mod canvas;
+mod components;
 mod file;
-mod message_box;
-mod modal;
 mod player;
 mod styles;
-mod svg_button;
 mod toolbar;
 
 pub struct GurafuApplication {
     panes: pane_grid::State<Pane>,
     file: file::FileState,
-    canvas: canvas::CanvasState,
+    canvas: canvas::CanvasState<HierholzerState>,
     toolbar: toolbar::ToolbarState,
     player: player::PlayerState,
     message_box: message_box::MessageBoxState,
@@ -158,13 +158,13 @@ impl GurafuApplication {
                     });
                 }
                 FileMessage::NewFile => {
-                    state.load_graph(CanvasSerializable::new());
+                    state.canvas.set_graph(CanvasSerializable::new().into());
                 }
             },
             GurafuMessage::FileOpened(res) => match res {
                 Ok(content) => match serde_json::from_str::<CanvasSerializable>(&content) {
                     Ok(graph) => {
-                        state.load_graph(graph);
+                        state.canvas.set_graph(graph.into());
                     }
                     Err(er) => {
                         state.open_modal_generic_error(format!(
@@ -215,9 +215,9 @@ impl GurafuApplication {
                 state.open_modal_about();
             }
             GurafuMessage::Toolbar(message) => match message {
-                ToolbarMessage::ChosenState(new_state) => {
+                ToolbarMessage::ChosenOption(new_state) => {
                     state.toolbar.state = new_state.clone();
-                    state.canvas.toolbar_state = new_state;
+                    state.canvas.set_toolbar_options(new_state);
                 }
             },
             GurafuMessage::Player(message) => match message {
@@ -229,14 +229,7 @@ impl GurafuApplication {
                     state.player.playing = false;
                 }
                 PlayerMessage::NextStep => match state.canvas.step_algorithm() {
-                    Some(mes) => match mes {
-                        AlgorithmMessage::AlgorithmSuccess(res) => {
-                            state.open_modal_algo_success(res);
-                        }
-                        AlgorithmMessage::AlgorithmFail => {
-                            state.open_modal_algo_fail();
-                        }
-                    },
+                    Some(mes) => state.open_modal_algorithm(mes),
                     None => {}
                 },
                 PlayerMessage::SliderValueChanged(val) => {
@@ -244,14 +237,7 @@ impl GurafuApplication {
                 }
             },
             GurafuMessage::AlgorithmTick => match state.canvas.step_algorithm() {
-                Some(mes) => match mes {
-                    AlgorithmMessage::AlgorithmSuccess(res) => {
-                        state.open_modal_algo_success(res);
-                    }
-                    AlgorithmMessage::AlgorithmFail => {
-                        state.open_modal_algo_fail();
-                    }
-                },
+                Some(mes) => state.open_modal_algorithm(mes),
                 None => {}
             },
             GurafuMessage::CloseModal => {
@@ -327,7 +313,7 @@ impl GurafuApplication {
         ];
 
         match state.modal_content {
-            ModalState::Open => modal::modal(
+            ModalState::Open => modal(
                 layout,
                 message_box::MessageBoxState::view(&state.message_box)
                     .map(GurafuMessage::MessageBox),
@@ -338,50 +324,27 @@ impl GurafuApplication {
         }
     }
 
-    fn open_modal_algo_fail(&mut self) {
+    fn open_modal(&mut self, header: String, text: String) {
         self.modal_content = ModalState::Open;
         self.player.playing = false;
-        self.message_box.header_text = "Результаты работы алгоритма".to_string();
+        self.message_box.header_text = header;
 
-        self.message_box.message_text = "Алгоритм завершился, Эйлеров цикл не найден".to_string();
+        self.message_box.message_text = text;
     }
 
-    fn open_modal_algo_success(&mut self, circuit: Vec<usize>) {
-        self.modal_content = ModalState::Open;
-        self.player.playing = false;
-        self.message_box.header_text = "Результаты работы алгоритма".to_string();
-        self.message_box.message_text = format!(
-            "Алгоритм выполнен успешно, Эйлеров цикл: {}",
-            circuit
-                .iter()
-                .map(|el| el.to_string())
-                .collect::<Vec<String>>()
-                .join(" -> ")
-        );
-
-        self.canvas.reset_algorithm();
+    fn open_modal_algorithm(
+        &mut self,
+        mes: AlgorithmMessage,
+    ) {
+        self.open_modal(mes.get_header(), mes.get_text().clone());
     }
 
     fn open_modal_generic_error(&mut self, error_text: String) {
-        self.modal_content = ModalState::Open;
-        self.player.playing = false;
-
-        self.message_box.header_text = "Произошла ошибка".to_string();
-        self.message_box.message_text = error_text;
+        self.open_modal("Произошла ошибка".to_string(), error_text);
     }
 
     fn open_modal_about(&mut self) {
-        self.modal_content = ModalState::Open;
-        self.player.playing = false;
-
-        self.message_box.header_text = "О программе".to_string();
-        self.message_box.message_text =
-            "Программа для наглядой визуализации нахождения цикла Эйлера.\n Выполнил Иванов Александр Евгеньевич, группа 424-3\n Программа построенна на фреймворке iced для Rust".to_string();
-    }
-
-    fn load_graph(&mut self, graph: CanvasSerializable) {
-        self.canvas.graph = graph.into();
-        self.canvas.reset_algorithm();
+        self.open_modal("О программе".to_string(),          "Программа для наглядой визуализации нахождения цикла Эйлера.\n Выполнил Иванов Александр Евгеньевич, группа 424-3\n Программа построенна на фреймворке iced для Rust".to_string());
     }
 
     fn theme(&self) -> iced::Theme {

@@ -5,7 +5,6 @@ This is a graph viewer written in Rust with Iced.
 TODO:
 1. Failed algo paint red
 3. Add current node highlighting
-4. Fix 0 -> 1 -> 2 -> 3 -> 4 -> 2 -> 5 -> 0 (add to tests a well)
 5. Fix bridge highlighting
 6. Fix modal window reseting camera position
 7. Fix rendering of arrows
@@ -21,13 +20,6 @@ It can:
 
 roadmap:
 7. Refactor
-    - create better hierarhy
-      - create components module
-      - create funcs for standart components (like modal, button w/ svg)
-    - stardartize algorithm interface
-      - simplify interface for it
-      - allow for (at least in code) different algorithms selection
-      - create few algos w/ llm
     - reconsider "drawable" interface
       - substitute component naming
       - possibly optimize drawing with cache

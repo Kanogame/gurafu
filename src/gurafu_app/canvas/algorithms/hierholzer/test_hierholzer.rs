@@ -2,7 +2,8 @@
 mod test_hierholzer {
     use crate::gurafu_app::canvas::drawable::arrow::Arrow;
     use crate::gurafu_app::canvas::drawable::circle::Circle;
-    use crate::gurafu_app::canvas::hierholzer::{HierholzerState, HierholzerStep};
+    use crate::gurafu_app::canvas::algorithms::hierholzer::{HierholzerState, HierholzerStep};
+    use crate::gurafu_app::canvas::graph_algorithm::GraphAlgorithm;
 
     use petgraph::prelude::StableGraph;
     use petgraph::stable_graph::NodeIndex;
