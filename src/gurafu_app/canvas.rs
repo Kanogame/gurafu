@@ -20,7 +20,7 @@ use crate::gurafu_app::{
     canvas::{
         canvas_frame::CanvasFrame,
         drawable::{DrawablePath, DrawableText, arrow::Arrow, circle::Circle},
-        fluery::FlueryState,
+        hierholzer::HierholzerState,
         grid::Grid,
     },
     toolbar::ToolbarOptions,
@@ -29,7 +29,7 @@ use crate::gurafu_app::{
 mod camera;
 mod canvas_frame;
 mod drawable;
-mod fluery;
+mod hierholzer;
 mod grid;
 mod helpers;
 // just zoom, pan and interaction state
@@ -43,7 +43,7 @@ pub struct CanvasState {
     pub grid: Grid,
 
     // algo
-    algo: FlueryState,
+    algo: HierholzerState,
 
     // connection
     is_connecting: bool,
@@ -206,7 +206,7 @@ impl CanvasState {
             graph: StableGraph::new(),
             grid: Grid::new(),
 
-            algo: FlueryState::new(),
+            algo: HierholzerState::new(),
 
             is_connecting: false,
             connection_start: Point { x: 0_f32, y: 0_f32 },

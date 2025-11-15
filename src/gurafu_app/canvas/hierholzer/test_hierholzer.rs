@@ -1,8 +1,8 @@
 #[cfg(test)]
-mod test_fluery {
+mod test_hierholzer {
     use crate::gurafu_app::canvas::drawable::arrow::Arrow;
     use crate::gurafu_app::canvas::drawable::circle::Circle;
-    use crate::gurafu_app::canvas::fluery::{FlueryState, FlueryStep};
+    use crate::gurafu_app::canvas::hierholzer::{HierholzerState, HierholzerStep};
 
     use petgraph::prelude::StableGraph;
     use petgraph::stable_graph::NodeIndex;
@@ -22,9 +22,12 @@ mod test_fluery {
         g
     }
 
-    fn run_fluery(mut algo: FlueryState, mut graph: StableGraph<Circle, Arrow>) -> FlueryStep {
-        algo.algo_step = FlueryStep::CheckingOutgoing;
-        while algo.algo_step != FlueryStep::Completed && algo.algo_step != FlueryStep::Failed {
+    fn run_hierholzer(mut graph: StableGraph<Circle, Arrow>) -> HierholzerStep {
+        let mut algo = HierholzerState::new();
+
+        while algo.algo_step != HierholzerStep::Completed
+            && algo.algo_step != HierholzerStep::Failed
+        {
             algo.step_algorithm(&mut graph);
         }
         algo.algo_step
@@ -36,13 +39,7 @@ mod test_fluery {
         let mut g = make_circle_graph(1);
         add_edge(&mut g, 0, 0);
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Completed);
+        assert_eq!(run_hierholzer(g), HierholzerStep::Completed);
     }
 
     /// Примитив 2: треугольник 0→1→2→0
@@ -53,13 +50,7 @@ mod test_fluery {
         add_edge(&mut g, 1, 2);
         add_edge(&mut g, 2, 0);
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Completed);
+        assert_eq!(run_hierholzer(g), HierholzerStep::Completed);
     }
 
     /// Примитив 3: Двойной треугольник
@@ -73,13 +64,7 @@ mod test_fluery {
         add_edge(&mut g, 3, 2);
         add_edge(&mut g, 2, 0);
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Completed);
+        assert_eq!(run_hierholzer(g), HierholzerStep::Completed);
     }
 
     /// Контрпример: 0→3→2→1→0 и 0→2
@@ -92,17 +77,7 @@ mod test_fluery {
         add_edge(&mut g, 1, 0);
         add_edge(&mut g, 0, 2); // лишнее ребро
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(
-            result,
-            FlueryStep::Failed,
-            "Алгоритм должен завершиться с ошибкой"
-        );
+        assert_eq!(run_hierholzer(g), HierholzerStep::Failed);
     }
 
     /// Сложный: два цикла, соединённые мостом
@@ -117,13 +92,7 @@ mod test_fluery {
         add_edge(&mut g, 3, 4);
         add_edge(&mut g, 4, 0);
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Completed);
+        assert_eq!(run_hierholzer(g), HierholzerStep::Completed);
     }
 
     /// Сложный 2: цикл с хвостом
@@ -136,13 +105,7 @@ mod test_fluery {
         add_edge(&mut g, 2, 0);
         add_edge(&mut g, 2, 3);
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Failed);
+        assert_eq!(run_hierholzer(g), HierholzerStep::Failed);
     }
 
     /// Случайный эйлеров граф: 6 узлов, множество циклов
@@ -161,12 +124,6 @@ mod test_fluery {
             }
         }
 
-        let mut algo = FlueryState::new();
-        algo.graph_clone = g.clone();
-        algo.current_node = Some(NodeIndex::new(0));
-        algo.stack.push(NodeIndex::new(0));
-
-        let result = run_fluery(algo, g);
-        assert_eq!(result, FlueryStep::Completed);
+        assert_eq!(run_hierholzer(g), HierholzerStep::Completed);
     }
 }
