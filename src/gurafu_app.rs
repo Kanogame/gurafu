@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use iced::Length::{self, Fill};
 use iced::time::{self};
-use iced::widget::{button, column, container, row, svg, text};
+use iced::widget::{Space, button, column, container, row, stack, svg, text};
 use iced::{Font, Task, font};
 
 use iced::{Settings, Subscription, widget::pane_grid};
@@ -10,7 +10,7 @@ use rfd::{AsyncFileDialog, FileHandle};
 
 use crate::gurafu_app::canvas::CanvasSerializable;
 use crate::gurafu_app::canvas::algorithms::hierholzer::HierholzerState;
-use crate::gurafu_app::canvas::graph_algorithm::{AlgorithmMessage};
+use crate::gurafu_app::canvas::graph_algorithm::AlgorithmMessage;
 use crate::gurafu_app::components::message_box::{self, MessageBoxMessage};
 use crate::gurafu_app::components::modal::modal;
 use crate::gurafu_app::file::FileMessage;
@@ -60,6 +60,7 @@ enum GurafuMessage {
     Error(String),
 }
 
+#[derive(PartialEq)]
 enum ModalState {
     Closed,
     Open,
@@ -266,61 +267,63 @@ impl GurafuApplication {
     }
 
     fn view(state: &GurafuApplication) -> iced::Element<'_, GurafuMessage> {
-        let layout = column![
-            row![
-                text("Программа для нахождения цикла Эйлера")
-                    .size(24)
-                    .font(Font {
-                        weight: font::Weight::Bold,
-                        ..Font::default()
+        stack![
+            column![
+                row![
+                    text("Программа для нахождения цикла Эйлера")
+                        .size(24)
+                        .font(Font {
+                            weight: font::Weight::Bold,
+                            ..Font::default()
+                        })
+                        .width(Fill),
+                    button(svg("assets/icons/info.svg").style(styles::button_svg_style))
+                        .on_press(GurafuMessage::OpenInfo)
+                        .width(80),
+                ]
+                .padding([5, 10]),
+                pane_grid(&state.panes, |_, pane_state, _| match pane_state {
+                    Pane::File => pane_grid::Content::new({
+                        file::FileState::view(&state.file).map(GurafuMessage::File)
                     })
-                    .width(Fill),
-                button(svg("assets/icons/info.svg").style(styles::button_svg_style))
-                    .on_press(GurafuMessage::OpenInfo)
-                    .width(80),
-            ]
-            .padding([5, 10]),
-            pane_grid(&state.panes, |_, pane_state, _| match pane_state {
-                Pane::File => pane_grid::Content::new({
-                    file::FileState::view(&state.file).map(GurafuMessage::File)
-                })
-                .style(styles::pane_grid_style),
-                Pane::Canvas => pane_grid::Content::new({
-                    container(
+                    .style(styles::pane_grid_style),
+                    Pane::Canvas => pane_grid::Content::new({
                         container(
-                            canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas),
+                            container(
+                                canvas::CanvasState::view(&state.canvas).map(GurafuMessage::Canvas),
+                            )
+                            .style(styles::canvas_container_style)
+                            .height(Length::Fill)
+                            .width(Length::Fill),
                         )
-                        .style(styles::canvas_container_style)
+                        .padding(8)
+                        .width(Length::Fill)
                         .height(Length::Fill)
-                        .width(Length::Fill),
-                    )
-                    .padding(8)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
+                    })
+                    .style(styles::pane_grid_canvas_style),
+                    Pane::Player => pane_grid::Content::new({
+                        player::PlayerState::view(&state.player).map(GurafuMessage::Player)
+                    })
+                    .style(styles::pane_grid_style),
+                    Pane::Toolbar => pane_grid::Content::new({
+                        toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
+                    })
+                    .style(styles::pane_grid_style),
                 })
-                .style(styles::pane_grid_canvas_style),
-                Pane::Player => pane_grid::Content::new({
-                    player::PlayerState::view(&state.player).map(GurafuMessage::Player)
-                })
-                .style(styles::pane_grid_style),
-                Pane::Toolbar => pane_grid::Content::new({
-                    toolbar::ToolbarState::view(&state.toolbar).map(GurafuMessage::Toolbar)
-                })
-                .style(styles::pane_grid_style),
-            })
-            .on_resize(10, GurafuMessage::PaneResized)
-        ];
-
-        match state.modal_content {
-            ModalState::Open => modal(
-                layout,
-                message_box::MessageBoxState::view(&state.message_box)
-                    .map(GurafuMessage::MessageBox),
-                GurafuMessage::CloseModal,
-            )
-            .into(),
-            ModalState::Closed => layout.into(),
-        }
+                .on_resize(10, GurafuMessage::PaneResized)
+            ],
+            if state.modal_content == ModalState::Open {
+                container(modal(message_box::MessageBoxState::view(&state.message_box)
+                        .map(GurafuMessage::MessageBox),
+                    GurafuMessage::CloseModal,
+                ))
+                .width(Length::Fill)
+                .height(Length::Fill)
+            } else {
+                container(Space::new(0, 0))
+            }
+        ]
+        .into()
     }
 
     fn open_modal(&mut self, header: String, text: String) {
@@ -331,10 +334,7 @@ impl GurafuApplication {
         self.message_box.message_text = text;
     }
 
-    fn open_modal_algorithm(
-        &mut self,
-        mes: AlgorithmMessage,
-    ) {
+    fn open_modal_algorithm(&mut self, mes: AlgorithmMessage) {
         self.open_modal(mes.get_header(), mes.get_text().clone());
     }
 

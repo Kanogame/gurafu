@@ -59,19 +59,19 @@ impl GraphAlgorithm for HierholzerState {
             HierholzerStep::Backtracking => self.backtrack_all(graph),
             HierholzerStep::Completed => {
                 self.step_explanation = "Algorithm completed successfully".into();
-                self.reset_algorithm(graph);
-
-                // На выходе возвращаем circuit в прямом порядке (0->1->2->...)
-                return Some(AlgorithmMessage::AlgorithmSuccess(
-                    format!(
+                let mes = format!(
                         "Алгоритм выполнен успешно, Эйлеров цикл: {}",
                         self.circuit
                             .iter()
                             .map(|el| el.index().to_string())
                             .collect::<Vec<String>>()
                             .join(" -> ")
-                    )
-                ));
+                    );
+                
+                self.reset_algorithm(graph);
+
+                // На выходе возвращаем circuit в прямом порядке (0->1->2->...)
+                return Some(AlgorithmMessage::AlgorithmSuccess(mes));
             }
             HierholzerStep::Failed => {
                 self.reset_algorithm(graph);

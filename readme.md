@@ -6,8 +6,8 @@ TODO:
 1. Failed algo paint red
 3. Add current node highlighting
 5. Fix bridge highlighting
-6. Fix modal window reseting camera position
 9. Finally zoom to center instead of top left corner
+10. Fix middle mouse movement
 
 It can:
 1. Load graphs

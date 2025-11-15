@@ -163,11 +163,9 @@ impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorith
                 None => {}
             },
             None => {
-                // cursor is outside the canvas, do nothing
             }
         }
 
-        // Then, we produce the geometry
         vec![frame.into_geometry()]
     }
 
