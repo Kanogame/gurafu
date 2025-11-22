@@ -195,7 +195,7 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
 
     pub fn draw_arrow(&self, end: WorldPoint) -> Option<Link> {
         if self.is_connecting {
-            return Some(Link::from_world_points(self.connection_start.into(), end))
+            return Some(Link::from_world_points_new_link(self.connection_start.into(), end))
         }
         None
     }
@@ -218,6 +218,9 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
                 self.graph.node_weight_mut(node_index).unwrap().id = node_index.index();
 
                 self.grid.add_to_grid(grid_pos, node_index);
+
+                self.reset_algorithm_highlighting();
+                self.reset_algorithm();
             }
         }
     }
@@ -238,7 +241,8 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
 
                         self.graph.remove_node(idx.clone());
 
-                        // remove edges
+                        self.reset_algorithm_highlighting();
+                        self.reset_algorithm();
                     }
                     None => {
                         // odd
@@ -278,6 +282,9 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
                 end_node.unwrap().clone(),
                 Link::from_world_points(self.connection_start.into(), end_grid_point.into()),
             );
+
+            self.reset_algorithm_highlighting();
+            self.reset_algorithm();
         }
 
         self.is_connecting = false;
@@ -306,6 +313,10 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         self.algo.reset_algorithm(&mut self.graph);
     }
 
+     pub fn reset_algorithm_highlighting(&mut self) {
+        self.algo.clear_highlights(&mut self.graph);
+    }
+
     pub fn set_toolbar_options(&mut self, new_state: ToolbarOption) {
         self.toolbar_option = new_state;
     }
@@ -316,6 +327,7 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         self.is_connecting = false;
         self.toolbar_option = ToolbarOption::Hand;
 
+        self.reset_algorithm_highlighting();
         self.reset_algorithm();
     }
 }

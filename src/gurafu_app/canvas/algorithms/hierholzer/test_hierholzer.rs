@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod test_hierholzer {
+    use crate::gurafu_app::canvas::algorithms::hierholzer::{HierholzerState, HierholzerStep};
     use crate::gurafu_app::canvas::drawable::link::Link;
     use crate::gurafu_app::canvas::drawable::node::Node;
-    use crate::gurafu_app::canvas::algorithms::hierholzer::{HierholzerState, HierholzerStep};
     use crate::gurafu_app::canvas::graph_algorithm::GraphAlgorithm;
 
     use petgraph::prelude::StableGraph;
@@ -126,5 +126,21 @@ mod test_hierholzer {
         }
 
         assert_eq!(run_hierholzer(g), HierholzerStep::Completed);
+    }
+
+    #[test]
+    fn test_double_triangle() {
+        // 0→1→2→0 и 0→2→1→0 (два треугольника)
+        let mut g = make_circle_graph(3);
+        add_edge(&mut g, 0, 1);
+        add_edge(&mut g, 1, 2);
+        add_edge(&mut g, 2, 0);
+
+        add_edge(&mut g, 0, 2);
+        add_edge(&mut g, 2, 1);
+        add_edge(&mut g, 1, 0);
+
+        let result = run_hierholzer(g);
+        assert_eq!(result, HierholzerStep::Completed);
     }
 }

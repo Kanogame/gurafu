@@ -98,7 +98,7 @@ impl GurafuApplication {
                 a: Box::new(pane_grid::Configuration::Pane(Pane::Toolbar)),
                 b: Box::new(pane_grid::Configuration::Split {
                     axis: pane_grid::Axis::Horizontal,
-                    ratio: 0.66,
+                    ratio: 0.5,
                     a: Box::new(pane_grid::Configuration::Pane(Pane::File)),
                     b: Box::new(pane_grid::Configuration::Pane(Pane::Player)),
                 }),
@@ -245,6 +245,7 @@ impl GurafuApplication {
             }
             GurafuMessage::MessageBox(message) => match message {
                 MessageBoxMessage::Close => {
+                    state.canvas.reset_algorithm_highlighting();
                     state.modal_content = ModalState::Closed;
                 }
             },

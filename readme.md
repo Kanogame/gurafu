@@ -2,11 +2,6 @@ What is this:
 This is a graph viewer written in Rust with Iced.
 
 
-TODO:
-1. Failed algo paint red
-3. Add current node highlighting
-10. Fix middle mouse movement
-
 It can:
 1. Load graphs
 2. Display them

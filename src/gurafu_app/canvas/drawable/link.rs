@@ -110,6 +110,17 @@ impl Link {
         }
     }
 
+    pub fn from_world_points_new_link(source: WorldPoint, target: WorldPoint) -> Self {
+        Self {
+            start: source,
+            end: target,
+            line_width: 10.0,
+            arrowhead_size: 30.0,
+            offset: 0.0,
+            color: Color::from_rgb8(80, 80, 80),
+        }
+    }
+
     pub fn from_nodes_serializable(source: &NodeSerializable, target: &NodeSerializable) -> Self {
         Self {
             start: source.into(),

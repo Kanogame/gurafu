@@ -16,6 +16,7 @@ pub trait GraphAlgorithm {
     ) -> Option<AlgorithmMessage>;
 
     fn reset_algorithm(&mut self, graph: &mut StableGraph<Node, Link>);
+    fn clear_highlights(&mut self, graph: &mut StableGraph<Node, Link>);
 }
 
 impl AlgorithmMessage {

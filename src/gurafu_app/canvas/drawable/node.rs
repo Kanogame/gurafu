@@ -51,6 +51,14 @@ impl Node {
         self.color = Color::from_rgb8(0, 255, 136);
     }
 
+     pub fn highlight_current(&mut self) {
+        self.color = Color::from_rgb8(255, 255, 136);
+    }
+
+    pub fn highlight_error(&mut self) {
+        self.color = Color::from_rgb8(255, 0, 0);
+    }
+
     pub fn highlight_exploring(&mut self) {
         self.color = Color::from_rgb8(255, 215, 0)
     }
