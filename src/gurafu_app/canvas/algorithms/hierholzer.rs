@@ -21,7 +21,6 @@ pub struct HierholzerState {
     next_candidate: Option<NodeIndex>,
     next_edge: Option<petgraph::graph::EdgeIndex>, // выбранное конкретное ребро (для параллельных рёбер)
     visited_edges: Vec<petgraph::graph::EdgeIndex>, // использованные рёбра (для подсветки)
-    step_explanation: String,
 
     // Для очистки временных подсветок
     highlighted_candidates: Vec<NodeIndex>,
@@ -48,7 +47,17 @@ impl GraphAlgorithm for HierholzerState {
         &mut self,
         graph: &mut StableGraph<Node, Link>,
     ) -> Option<AlgorithmMessage> {
-        let cur_state = self.algo_step;
+
+        // --------------------------------------------------------
+        // ADDED: подсветка текущей вершины на каждом шаге (если она задана)
+        // вызываем node_highlight_current() у весa вершины
+        // --------------------------------------------------------
+        if let Some(cn) = self.current_node {
+            if let Some(nw) = graph.node_weight_mut(cn) {
+                nw.highlight_current(); // ADDED
+            }
+        }
+        // --------------------------------------------------------
 
         match self.algo_step {
             HierholzerStep::NotStarted => self.initialize_algorithm(graph),
@@ -58,7 +67,6 @@ impl GraphAlgorithm for HierholzerState {
             HierholzerStep::Advancing => self.advance_to_next(graph),
             HierholzerStep::Backtracking => self.backtrack_all(graph),
             HierholzerStep::Completed => {
-                self.step_explanation = "Algorithm completed successfully".into();
                 let mes = format!(
                         "Алгоритм выполнен успешно, Эйлеров цикл: {}",
                         self.circuit
@@ -74,19 +82,15 @@ impl GraphAlgorithm for HierholzerState {
                 return Some(AlgorithmMessage::AlgorithmSuccess(mes));
             }
             HierholzerStep::Failed => {
+                for n in graph.node_weights_mut() {
+                        n.highlight_error();
+                }
                 self.reset_algorithm(graph);
-
-                self.step_explanation = "Algorithm failed (graph not Eulerian)".into();
                 return Some(AlgorithmMessage::AlgorithmFail("Алгоритм завершился, Эйлеров цикл не найден".to_string()));
             }
         }
 
-        println!(
-            "Step: {} - {}",
-            format!("{:?}", cur_state),
-            self.step_explanation
-        );
-
+        self.highlight_current_node(graph);
         None
     }
 
@@ -101,14 +105,20 @@ impl GraphAlgorithm for HierholzerState {
         self.next_candidate = None;
         self.next_edge = None;
         self.visited_edges.clear();
-        self.step_explanation.clear();
         self.highlighted_candidates.clear();
         self.highlighted_edges.clear();
 
         // сохраняем исходное количество рёбер для финальной валидации
         self.original_edge_count = graph.edge_count();
+    }
 
-        self.clear_highlights(graph);
+    fn clear_highlights(&mut self, graph: &mut StableGraph<Node, Link>) {
+        for node in graph.node_weights_mut() {
+            node.reset_highlight();
+        }
+        for edge in graph.edge_weights_mut() {
+            edge.reset_highlight();
+        }
     }
 
     fn new() -> Self {
@@ -123,7 +133,6 @@ impl GraphAlgorithm for HierholzerState {
             next_candidate: None,
             next_edge: None,
             visited_edges: Vec::new(),
-            step_explanation: String::new(),
             highlighted_candidates: Vec::new(),
             highlighted_edges: Vec::new(),
             original_edge_count: 0,
@@ -136,7 +145,7 @@ impl HierholzerState {
     fn initialize_algorithm(&mut self, graph: &mut StableGraph<Node, Link>) {
         self.reset_algorithm(graph);
 
-        // === ДОБАВЛЕНО: Проверка Эйлеровости по степеням (для направленного графа)
+        // Проверка Эйлеровости по степеням (для направленного графа)
         // Если граф не удовлетворяет in_degree == out_degree для какой-либо вершины,
         // то сразу помечаем как Failed (требование для наличия Эйлерова цикла).
         for v in self.graph_clone.node_indices() {
@@ -145,35 +154,28 @@ impl HierholzerState {
 
             if out != inc {
                 self.algo_step = HierholzerStep::Failed;
-                self.step_explanation = format!(
-                    "Graph is not Eulerian: at node {:?} out_degree={} != in_degree={}",
-                    v, out, inc
-                );
                 return;
             }
         }
-        // ========================================
-
-        self.step_explanation =
-            "Initializing Hierholzer - cloned graph and cleared state".to_string();
         self.algo_step = HierholzerStep::Initializing
+    }
+
+    fn highlight_current_node(&mut self, graph: &mut StableGraph<Node, Link>) {
+        if let Some(cur) = self.current_node {
+            if let Some(nw) = graph.node_weight_mut(cur) {
+                nw.highlight_start(); // ЕДИНЫЙ источник подсветки текущего узла
+            }
+        }
     }
 
     /// Находим стартовую вершину (любую с исходящими рёбрами)
     fn find_start_node(&mut self, graph: &mut StableGraph<Node, Link>) {
-        // Если graph_clone ещё пустой (reset уже клонировал), ищем вершину с исходящими ребрами
         self.current_node = self.graph_clone.node_indices().find(|&node| {
             self.graph_clone
                 .edges_directed(node, Direction::Outgoing)
                 .count()
                 > 0
         });
-
-        // Защита: если original_edge_count ещё не установлено (например, тесты напрямую подставили graph_clone),
-        // установим его здесь по текущему clone.
-        if self.original_edge_count == 0 {
-            self.original_edge_count = self.graph_clone.edge_count();
-        }
 
         if let Some(start_node) = self.current_node {
             // начинаем стек с этой вершины
@@ -185,11 +187,9 @@ impl HierholzerState {
             }
 
             self.algo_step = HierholzerStep::CheckingOutgoing;
-            self.step_explanation = format!("Starting Hierholzer from node {:?}", start_node);
         } else {
             // нет рёбер в графе — тривиально завершены (пустой цикл)
             self.algo_step = HierholzerStep::Completed;
-            self.step_explanation = "Graph has no edges - nothing to traverse".to_string();
         }
     }
 
@@ -202,7 +202,6 @@ impl HierholzerState {
             Some(n) => n,
             None => {
                 self.algo_step = HierholzerStep::Failed;
-                self.step_explanation = "No current node - algorithm failed".to_string();
                 return;
             }
         };
@@ -222,7 +221,6 @@ impl HierholzerState {
         if self.current_outgoing.is_empty() {
             // Если нет исходящих — пора делать backtrack (закрыть текущий путь)
             self.algo_step = HierholzerStep::Backtracking;
-            self.step_explanation = format!("No outgoing edges from {:?} - need to backtrack", current);
             return;
         } else if self.current_outgoing.len() == 1 {
             // Одна опция — выбираем её
@@ -240,13 +238,11 @@ impl HierholzerState {
             self.highlighted_candidates.push(next_node);
 
             self.algo_step = HierholzerStep::Advancing;
-            self.step_explanation = format!("Single outgoing from {:?} -> {:?}, taking it", current, next_node);
             return;
         } else {
             // Несколько вариантов — для детерминированности выбираем первый (можно изменить UX)
             self.current_idx = 0;
             self.algo_step = HierholzerStep::ChoosingNext;
-            self.step_explanation = format!("Multiple outgoing edges ({}) from {:?} - selecting first", self.current_outgoing.len(), current);
             return;
         }
     }
@@ -263,11 +259,9 @@ impl HierholzerState {
                 self.highlighted_candidates.push(node);
                 self.highlighted_edges.push(edge_id);
                 self.algo_step = HierholzerStep::Advancing;
-                self.step_explanation = "No preferable choice found - using first outgoing".to_string();
                 return;
             } else {
                 self.algo_step = HierholzerStep::Failed;
-                self.step_explanation = "No outgoing edges found during choose_next".to_string();
                 return;
             }
         }
@@ -288,7 +282,6 @@ impl HierholzerState {
         self.next_candidate = Some(candidate_node);
         self.next_edge = Some(edge_id);
         self.algo_step = HierholzerStep::Advancing;
-        self.step_explanation = format!("Selected edge {:?} -> {:?} for traversal", edge_id, candidate_node);
     }
 
     /// Выполнить переход по выбранному ребру: удалить ребро в clone, подсветить путь, двигаться дальше
@@ -303,6 +296,8 @@ impl HierholzerState {
                 return;
             }
         };
+
+        graph.node_weight_mut(current).unwrap().highlight_start();
 
         let next = match self.next_candidate {
             Some(n) => n,
@@ -357,7 +352,6 @@ impl HierholzerState {
         self.next_edge = None;
 
         self.algo_step = HierholzerStep::CheckingOutgoing;
-        self.step_explanation = format!("Advanced from {:?} to {:?}, pushed to stack", current, next);
     }
 
     /// Backtracking: в одном шаге снимаем вершины со стека (пока не дойдём до вершины, у которой есть исходящие рёбра),
@@ -373,7 +367,6 @@ impl HierholzerState {
         // если стек пуст — неоткуда бэктрекать
         if self.stack.is_empty() {
             self.algo_step = HierholzerStep::Failed;
-            self.step_explanation = "Backtrack requested but stack is empty".to_string();
             return;
         }
 
@@ -385,10 +378,8 @@ impl HierholzerState {
         // ни одного необработанного исходящего ребра (локальный walk закрыт).
         //
         // Важно: делаем это в одном шаге (для компактной визуализации).
-        let mut popped = 0usize;
         while let Some(top) = self.stack.pop() {
             self.circuit.push(top);
-            popped += 1;
             if let Some(nw) = graph.node_weight_mut(top) {
                 nw.highlight_solution();
             }
@@ -419,16 +410,10 @@ impl HierholzerState {
             if let Some(&resume_v) = self.stack.last() {
                 self.current_node = Some(resume_v);
                 self.algo_step = HierholzerStep::CheckingOutgoing;
-                self.step_explanation = format!(
-                    "Backtracked {} nodes; resuming traversal from {:?} (stack non-empty).",
-                    popped,
-                    resume_v
-                );
                 return;
             } else {
                 // защита, на случай непредвиденной ситуации
                 self.algo_step = HierholzerStep::Failed;
-                self.step_explanation = "Backtracked but cannot find resume vertex on stack".to_string();
                 return;
             }
         }
@@ -450,20 +435,10 @@ impl HierholzerState {
 
             if self.visited_edges.len() != computed_original {
                 self.algo_step = HierholzerStep::Failed;
-                self.step_explanation = format!(
-                    "Completed backtrack but used edges {} != expected {} => Failed",
-                    self.visited_edges.len(),
-                    computed_original
-                );
                 return;
             }
 
             self.algo_step = HierholzerStep::Completed;
-            self.step_explanation = format!(
-                "Completed Eulerian circuit - popped {} nodes; circuit length {}",
-                popped,
-                self.circuit.len()
-            );
             self.current_node = None;
             return;
         }
@@ -496,24 +471,14 @@ impl HierholzerState {
                 }
 
                 self.algo_step = HierholzerStep::CheckingOutgoing;
-                self.step_explanation = format!(
-                    "Merged cycles: found circuit vertex {:?} with remaining edges; resumed traversal",
-                    start_next
-                );
                 return;
             } else {
                 self.algo_step = HierholzerStep::Failed;
-                self.step_explanation = "Rotation produced empty circuit unexpectedly".to_string();
                 return;
             }
         } else {
             // Рёбра остались, но в circuit нет вершины, из которой можно их достать -> ошибка
             self.algo_step = HierholzerStep::Failed;
-            self.step_explanation = format!(
-                "Backtracked {} nodes but {} edges remain and no circuit vertex can reach them - failed",
-                popped,
-                self.graph_clone.edge_count()
-            );
             return;
         }
     }
@@ -541,16 +506,4 @@ impl HierholzerState {
         }
         self.highlighted_edges.clear();
     }
-
-    /// Полная очистка всех подсветок (reset)
-    fn clear_highlights(&mut self, graph: &mut StableGraph<Node, Link>) {
-        for node in graph.node_weights_mut() {
-            node.reset_highlight();
-        }
-        for edge in graph.edge_weights_mut() {
-            edge.reset_highlight();
-        }
-    }
-
-    
 }
