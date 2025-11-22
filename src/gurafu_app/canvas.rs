@@ -101,7 +101,7 @@ impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorith
                         ScrollDelta::Pixels { x, y } => Vector { x: x, y: y },
                     };
 
-                    state.camera.apply_scroll(delta_vec.y / 4_f32);
+                    state.camera.apply_scroll(delta_vec.y / 4_f32, pos.unwrap());
                     state.update_grid_points(&self.grid, bounds.size());
 
                     return helpers::CAPTURED;

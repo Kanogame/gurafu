@@ -1,4 +1,4 @@
-use iced::Point;
+use iced::{Point};
 use serde::{Deserialize, Serialize};
 
 
@@ -48,13 +48,23 @@ impl Camera {
         self.pos.y += offset.y * self.scale;
     }
 
-    pub fn apply_scroll(&mut self, scroll: f32) {
+    pub fn apply_scroll(&mut self, scroll: f32, cursor: Point) {
+        let world_cursor = self.screen_to_world(cursor); 
+        let last_scale = self.scale;
+
         self.scale -= scroll;
+
         if self.scale <= 0.0 {
             self.scale = 0.25
         } else if self.scale > 3.0 {
             self.scale = 3.0
         }
+
+        let zoom =  self.scale / last_scale;
+
+        self.pos.x = self.pos.x * zoom + world_cursor.x * (1.0 - zoom);
+        self.pos.y = self.pos.y * zoom + world_cursor.y * (1.0 - zoom);
+
     }
 
     pub fn screen_to_world(&self, screen_coords: Point) -> WorldPoint {

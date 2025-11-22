@@ -5,8 +5,6 @@ This is a graph viewer written in Rust with Iced.
 TODO:
 1. Failed algo paint red
 3. Add current node highlighting
-5. Fix bridge highlighting
-9. Finally zoom to center instead of top left corner
 10. Fix middle mouse movement
 
 It can:
