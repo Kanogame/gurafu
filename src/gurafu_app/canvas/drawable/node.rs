@@ -51,10 +51,6 @@ impl Node {
         self.color = Color::from_rgb8(0, 255, 136);
     }
 
-     pub fn highlight_current(&mut self) {
-        self.color = Color::from_rgb8(255, 255, 136);
-    }
-
     pub fn highlight_error(&mut self) {
         self.color = Color::from_rgb8(255, 0, 0);
     }
@@ -110,7 +106,7 @@ impl DrawableText for Node {
         Text {
             content: self.id.to_string(),
             position: camera.world_to_screen(self.center),
-            color: Color::BLACK,
+            color: Color::WHITE,
             size: Pixels::from(font_size / camera.scale),
             horizontal_alignment: alignment::Horizontal::Center,
             vertical_alignment: alignment::Vertical::Center,

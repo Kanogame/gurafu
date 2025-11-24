@@ -81,7 +81,7 @@ mod test_hierholzer {
         assert_eq!(run_hierholzer(g), HierholzerStep::Failed);
     }
 
-    /// Сложный: два цикла, соединённые мостом
+    /// Сложный тест: два цикла, соединённые мостом
     /// 0→1→2→0 и 0→3→4→0
     #[test]
     fn double_nested_cycle() {

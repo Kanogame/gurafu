@@ -54,7 +54,7 @@ impl GraphAlgorithm for HierholzerState {
         // --------------------------------------------------------
         if let Some(cn) = self.current_node {
             if let Some(nw) = graph.node_weight_mut(cn) {
-                nw.highlight_current(); // ADDED
+                nw.highlight_start(); // ADDED
             }
         }
         // --------------------------------------------------------
@@ -68,7 +68,7 @@ impl GraphAlgorithm for HierholzerState {
             HierholzerStep::Backtracking => self.backtrack_all(graph),
             HierholzerStep::Completed => {
                 let mes = format!(
-                        "Алгоритм выполнен успешно, Эйлеров цикл: {}",
+                        "Алгоритм выполнен успешно, Эйлеров цикл:\n {}",
                         self.circuit
                             .iter()
                             .map(|el| el.index().to_string())

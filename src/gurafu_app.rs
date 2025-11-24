@@ -209,6 +209,9 @@ impl GurafuApplication {
                 }
                 CanvasMessage::HandleConnection(world) => {
                     state.canvas.handle_connection(world);
+                },
+                CanvasMessage::ResetConnectionState => {
+                    state.canvas.reset_connection_state();
                 }
             },
             GurafuMessage::OpenInfo => {

@@ -1,0 +1,18 @@
+{
+  "graph": {
+    "nodes": [
+      { "position": { "x": 500.0, "y": 500.0 } },
+      { "position": { "x": 200.0, "y": 200.0 } },
+      { "position": { "x": 400.0, "y": 400.0 } },
+      { "position": { "x": 500.0, "y": 700.0 } }
+    ],
+    "node_holes": [],
+    "edge_property": "directed",
+    "edges": [
+      [2, 0, 0],
+      [0, 3, 0],
+      [1, 2, 0],
+      [3, 1, 0]
+    ]
+  }
+}

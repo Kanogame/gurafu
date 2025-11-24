@@ -193,7 +193,7 @@ impl CanvasStateInternal {
             }
             _ => {}
         };
-        helpers::IGNORED
+        helpers::capured_message(CanvasMessage::ResetConnectionState)
     }
 
     pub fn handle_mouse_moved(

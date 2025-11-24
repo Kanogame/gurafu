@@ -22,8 +22,8 @@ pub trait GraphAlgorithm {
 impl AlgorithmMessage {
     pub fn get_header(&self) -> String {
         match self {
-            AlgorithmMessage::AlgorithmSuccess(_) => "Алгоритм завершен успешно",
-            AlgorithmMessage::AlgorithmFail(_) => "Алгоритм завершился с ошибкой",
+            AlgorithmMessage::AlgorithmSuccess(_) => "Эйлеров цикл найден",
+            AlgorithmMessage::AlgorithmFail(_) => "Эйлеров цикл не найден",
         }.to_string()
     }
 

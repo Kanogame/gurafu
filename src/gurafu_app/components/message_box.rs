@@ -1,7 +1,5 @@
 use iced::{
-    Alignment,
-    Length::Fill,
-    widget::{button, column, container, row, text},
+    Alignment, Color, Length::Fill, widget::{button, column, container, row, text}
 };
 
 use crate::gurafu_app::styles::message_box_style;
@@ -31,7 +29,7 @@ impl MessageBoxState {
                 column![
                     text(state.message_text.clone()).size(16),
                     row![
-                        button(text("Закрыть").align_x(Alignment::Center))
+                        button(text("Закрыть").align_x(Alignment::Center).color(Color::WHITE))
                             .on_press(MessageBoxMessage::Close)
                             .width(Fill),
                     ]
@@ -40,7 +38,7 @@ impl MessageBoxState {
             ]
             .spacing(20),
         )
-        .width(300)
+        .width(400)
         .padding(10)
         .style(message_box_style)
         .into()

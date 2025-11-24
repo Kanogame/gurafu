@@ -18,8 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::gurafu_app::{
     canvas::{
         camera::WorldPoint, canvas_frame::CanvasFrame, drawable::{DrawablePath, DrawableText, link::Link, node::{Node, NodeSerializable}}, graph_algorithm::{AlgorithmMessage, GraphAlgorithm}, grid::{Grid, GridPoint}
-    },
-    toolbar::ToolbarOption,
+    }, styles::get_theme, toolbar::ToolbarOption
 };
 
 pub mod algorithms;
@@ -58,6 +57,8 @@ pub enum CanvasMessage {
 
     // connect elements
     HandleConnection(WorldPoint),
+
+    ResetConnectionState,
 }
 
 
@@ -82,11 +83,10 @@ impl <T>canvas::Program<CanvasMessage> for CanvasState<T> where T: GraphAlgorith
 
         match event {
             canvas::Event::Mouse(m_ev) => match m_ev {
-                mouse::Event::ButtonPressed(mouse::Button::Left) => {
-                    state.handle_left_mouse_pressed(pos)
-                }
-                mouse::Event::ButtonPressed(mouse::Button::Middle) => {
-                    state.handle_middle_mouse_pressed(pos)
+                mouse::Event::ButtonPressed(button) => match button {
+                    mouse::Button::Left => state.handle_left_mouse_pressed(pos),
+                    mouse::Button::Middle => state.handle_middle_mouse_pressed(pos),
+                    _ => helpers::IGNORED,
                 }
                 mouse::Event::ButtonReleased(button) => match button {
                     mouse::Button::Left => state.handle_left_mouse_released(pos),
@@ -207,7 +207,7 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
             id: 0,
             center: grid_pos.into(),
             radius: 30_f32,
-            color: Theme::Light.palette().primary,
+            color: get_theme().palette().primary,
         };
 
         match self.grid.get_from_grid(grid_pos) {
@@ -276,7 +276,7 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         let start_node = self.grid.get_from_grid(self.connection_start);
         let end_node = self.grid.get_from_grid(end_grid_point);
 
-        if start_node.is_some() && end_node.is_some() {
+        if start_node.is_some() && end_node.is_some() && start_node != end_node {
             self.graph.add_edge(
                 start_node.unwrap().clone(),
                 end_node.unwrap().clone(),
@@ -309,6 +309,11 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
         return self.algo.step_algorithm(&mut self.graph);
     }
 
+
+    pub fn reset_connection_state(&mut self) {
+        self.is_connecting = false;
+    }
+
     pub fn reset_algorithm(&mut self) {
         self.algo.reset_algorithm(&mut self.graph);
     }
@@ -318,6 +323,7 @@ impl <T>CanvasState<T> where T: GraphAlgorithm {
     }
 
     pub fn set_toolbar_options(&mut self, new_state: ToolbarOption) {
+        self.is_connecting = false;
         self.toolbar_option = new_state;
     }
 

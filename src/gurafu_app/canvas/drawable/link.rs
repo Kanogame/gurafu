@@ -137,7 +137,7 @@ impl Link {
     }
 
     pub fn highlight_path(&mut self) {
-        self.color = Color::from_rgb8(144, 238, 144)
+        self.color = Color::from_rgb8(144, 238, 144);
     }
 
     pub fn reset_highlight(&mut self) {
